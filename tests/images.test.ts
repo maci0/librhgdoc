@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import {
   IMAGE_EXTENSIONS,
   detectMimeType,
+  mimeToExtension,
   isLocalPath,
   isImagePath,
   findImageRefs,
@@ -76,6 +77,38 @@ describe('detectMimeType', () => {
   test('is case-insensitive', () => {
     expect(detectMimeType('PHOTO.PNG')).toBe('image/png');
     expect(detectMimeType('image.JPG')).toBe('image/jpeg');
+  });
+});
+
+// ─── mimeToExtension ─────────────────────────────────────────────────────────
+
+describe('mimeToExtension', () => {
+  test('returns .png for image/png', () => {
+    expect(mimeToExtension('image/png')).toBe('.png');
+  });
+
+  test('returns .jpg for image/jpeg', () => {
+    expect(mimeToExtension('image/jpeg')).toBe('.jpg');
+  });
+
+  test('returns .gif for image/gif', () => {
+    expect(mimeToExtension('image/gif')).toBe('.gif');
+  });
+
+  test('returns .svg for image/svg+xml', () => {
+    expect(mimeToExtension('image/svg+xml')).toBe('.svg');
+  });
+
+  test('returns .pdf for application/pdf', () => {
+    expect(mimeToExtension('application/pdf')).toBe('.pdf');
+  });
+
+  test('returns .bin for unknown MIME type', () => {
+    expect(mimeToExtension('unknown/type')).toBe('.bin');
+  });
+
+  test('is case-insensitive', () => {
+    expect(mimeToExtension('IMAGE/PNG')).toBe('.png');
   });
 });
 

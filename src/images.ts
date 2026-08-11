@@ -56,6 +56,31 @@ const MIME_MAP: Record<string, string> = { ...IMAGE_MIME_MAP, ...DOC_MIME_MAP };
 /** Set of recognized image file extensions (e.g. `.png`, `.jpg`). */
 export const IMAGE_EXTENSIONS = new Set(Object.keys(IMAGE_MIME_MAP));
 
+/** Map a MIME type string to a file extension (with leading dot).
+ * Returns `'.bin'` for unrecognized MIME types.
+ * @example mimeToExtension('image/jpeg') // → '.jpg' */
+export function mimeToExtension(mime: string): string {
+  const map: Record<string, string> = {
+    'image/png': '.png',
+    'image/jpeg': '.jpg',
+    'image/gif': '.gif',
+    'image/svg+xml': '.svg',
+    'image/webp': '.webp',
+    'image/bmp': '.bmp',
+    'image/tiff': '.tiff',
+    'image/x-icon': '.ico',
+    'application/pdf': '.pdf',
+    'application/zip': '.zip',
+    'text/plain': '.txt',
+    'text/html': '.html',
+    'text/markdown': '.md',
+    'application/json': '.json',
+    'application/xml': '.xml',
+    'text/csv': '.csv',
+  };
+  return map[mime.toLowerCase()] ?? '.bin';
+}
+
 /**
  * Detect the MIME type of an image file from its extension.
  *

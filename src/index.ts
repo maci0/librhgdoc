@@ -61,6 +61,7 @@ export {
 export {
   IMAGE_EXTENSIONS,
   detectMimeType,
+  mimeToExtension,
   isLocalPath,
   isImagePath,
   type ImageRef,
