@@ -406,3 +406,8 @@ export async function deleteGoogleDriveFile(
     throw new Error(`Drive delete failed (${res.status}): ${text}`);
   }
 }
+
+/** Delete multiple files from Google Drive. Errors are silently ignored (files may already be gone). */
+export async function deleteGoogleDriveFiles(token: string, fileIds: string[]): Promise<void> {
+  await Promise.all(fileIds.map(id => deleteGoogleDriveFile(token, id).catch(() => {})));
+}

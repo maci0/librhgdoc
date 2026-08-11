@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-export { type RgbColor, RH_COLORS, hexToRgb, rgbToHex, isGrayHex } from './colors.ts';
+export { type RgbColor, RH_COLORS, hexToRgb, rgbToHex, isGrayHex, normHex } from './colors.ts';
 export { djb2, contentHash, blockHash } from './hash.ts';
 export { toSlug } from './slug.ts';
 export { type TextRun, type InlineSeg, parseInline, stripInline } from './inline.ts';
@@ -41,6 +41,8 @@ export {
   SLIDE_W_PX,
   SLIDE_H_PX,
   toEmu,
+  GOOGLE_ID_RE,
+  extractGoogleId,
 } from './google-api.ts';
 export {
   RH_MERMAID_THEME,
@@ -65,6 +67,7 @@ export {
   uploadImageViaTempSlides,
   uploadImagesBatch,
   deleteGoogleDriveFile,
+  deleteGoogleDriveFiles,
 } from './image-upload.ts';
 export {
   type ColoredRun,
@@ -74,3 +77,19 @@ export {
   tokenize,
   getSupportedLanguages,
 } from './highlight.ts';
+export { fmtTime, type PresenterEntry, parsePresenterEntry } from './cli.ts';
+export { sparseMap } from './collections.ts';
+export { type ColumnWidthOptions, calcColumnWidths } from './tables.ts';
+export {
+  type AdmonitionType,
+  ADMONITION_TYPES,
+  ADMONITION_LABELS,
+  ADMONITION_ACCENT,
+  ADMONITION_BG,
+} from './admonitions.ts';
+export {
+  type LintLevel,
+  type LintMessage,
+  lintBrandNames,
+  lintBareUrls,
+} from './lint.ts';

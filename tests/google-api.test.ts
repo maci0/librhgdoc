@@ -11,6 +11,8 @@ import {
   EMU_PER_PX,
   SLIDE_W_PX,
   SLIDE_H_PX,
+  GOOGLE_ID_RE,
+  extractGoogleId,
   type BatchUpdateRequest,
 } from '../src/google-api.ts';
 
@@ -286,5 +288,53 @@ describe('optionalColor', () => {
     const c = { red: 0.5, green: 0.25, blue: 0.75 };
     const result = optionalColor(c);
     expect(result.color.rgbColor).toBe(c);
+  });
+});
+
+// ─── GOOGLE_ID_RE ─────────────────────────────────────────────────────────────
+
+describe('GOOGLE_ID_RE', () => {
+  test('matches a valid Google document ID', () => {
+    expect(GOOGLE_ID_RE.test('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms')).toBe(true);
+  });
+
+  test('rejects short strings', () => {
+    expect(GOOGLE_ID_RE.test('short')).toBe(false);
+  });
+
+  test('rejects strings with spaces', () => {
+    expect(GOOGLE_ID_RE.test('1BxiMVs0XRA5nFMdKvBdBZjgmUU qptlbs74OgVE2upms')).toBe(false);
+  });
+});
+
+// ─── extractGoogleId ─────────────────────────────────────────────────────────
+
+describe('extractGoogleId', () => {
+  test('extracts ID from Google Docs URL', () => {
+    const url = 'https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit';
+    expect(extractGoogleId(url)).toBe('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms');
+  });
+
+  test('extracts ID from Google Slides URL', () => {
+    const url = 'https://docs.google.com/presentation/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit';
+    expect(extractGoogleId(url)).toBe('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms');
+  });
+
+  test('accepts a bare valid ID', () => {
+    const id = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms';
+    expect(extractGoogleId(id)).toBe(id);
+  });
+
+  test('returns null for invalid input', () => {
+    expect(extractGoogleId('not-a-valid-id')).toBe(null);
+  });
+
+  test('returns null for empty string', () => {
+    expect(extractGoogleId('')).toBe(null);
+  });
+
+  test('extracts ID from Drive URL with /d/ path', () => {
+    const url = 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/view';
+    expect(extractGoogleId(url)).toBe('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms');
   });
 });

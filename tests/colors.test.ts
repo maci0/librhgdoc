@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { hexToRgb, rgbToHex, isGrayHex, RH_COLORS, type RgbColor } from '../src/colors.ts';
+import { hexToRgb, rgbToHex, isGrayHex, normHex, RH_COLORS, type RgbColor } from '../src/colors.ts';
 
 describe('hexToRgb', () => {
   test('converts #RRGGBB', () => {
@@ -105,5 +105,33 @@ describe('RH_COLORS', () => {
     expect(RH_COLORS.greyBg.green).toBeCloseTo(242 / 255, 4);
     expect(RH_COLORS.greyBg.blue).toBeCloseTo(242 / 255, 4);
     expect(rgbToHex(RH_COLORS.greyBg)).toBe('#F2F2F2');
+  });
+});
+
+// ─── normHex ─────────────────────────────────────────────────────────────────
+
+describe('normHex', () => {
+  test('lowercases and keeps hash prefix', () => {
+    expect(normHex('#EE0000')).toBe('#ee0000');
+  });
+
+  test('adds hash prefix if missing', () => {
+    expect(normHex('EE0000')).toBe('#ee0000');
+  });
+
+  test('returns empty string for empty input', () => {
+    expect(normHex('')).toBe('');
+  });
+
+  test('handles already-lowercase input', () => {
+    expect(normHex('#aabbcc')).toBe('#aabbcc');
+  });
+
+  test('handles mixed case without hash', () => {
+    expect(normHex('AbCdEf')).toBe('#abcdef');
+  });
+
+  test('preserves hash on already-prefixed input', () => {
+    expect(normHex('#000000')).toBe('#000000');
   });
 });

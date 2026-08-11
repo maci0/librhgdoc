@@ -134,6 +134,19 @@ export function optionalColor(color: { red: number; green: number; blue: number 
   return { color: { rgbColor: color } };
 }
 
+// ─── Google ID extraction ───────────────────────────────────────────────────
+
+/** Regex matching a bare Google Doc/Slides/Drive ID (25+ alphanumeric chars + hyphens/underscores). */
+export const GOOGLE_ID_RE = /^[a-zA-Z0-9_-]{25,}$/;
+
+/** Extract a Google Doc/Slides/Drive file ID from a URL or validate a bare ID string.
+ * Accepts full URLs like `https://docs.google.com/document/d/ID/edit` or bare IDs. */
+export function extractGoogleId(input: string): string | null {
+  const m = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  return GOOGLE_ID_RE.test(input) ? input : null;
+}
+
 // ─── Unit conversion ─────────────────────────────────────────────────────────
 
 /**

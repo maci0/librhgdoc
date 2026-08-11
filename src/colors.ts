@@ -68,6 +68,20 @@ export function rgbToHex(rgb: RgbColor): string {
  * 0.88, matching the heuristic from the Google-Apps-Script template
  * enforcer.  Accepts `#RRGGBB` format.
  */
+/** Normalize a hex color string: lowercase, ensure `#` prefix. */
+export function normHex(hex: string): string {
+  if (!hex) return '';
+  const h = hex.startsWith('#') ? hex : `#${hex}`;
+  return h.toLowerCase();
+}
+
+/**
+ * Check whether a hex colour is a shade of gray.
+ *
+ * Uses HSV saturation < 0.15 and weighted luminance between 0.15 and
+ * 0.88, matching the heuristic from the Google-Apps-Script template
+ * enforcer.  Accepts `#RRGGBB` format.
+ */
 export function isGrayHex(hex: string): boolean {
   if (!hex || hex.length < 7) return false;
   const r = parseInt(hex.slice(1, 3), 16) / 255;

@@ -4,6 +4,7 @@ import {
   uploadImageViaTempSlides,
   uploadImagesBatch,
   deleteGoogleDriveFile,
+  deleteGoogleDriveFiles,
 } from '../src/image-upload.ts';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
@@ -337,5 +338,45 @@ describe('uploadImagesBatch', () => {
         expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
       }
     }
+  });
+});
+
+// ─── deleteGoogleDriveFiles (batch) ──────────────────────────────────────────
+
+describe('deleteGoogleDriveFiles', () => {
+  test('deletes multiple files', async () => {
+    mockFetch(() => new Response(null, { status: 204 }));
+
+    await deleteGoogleDriveFiles(TOKEN, ['file-1', 'file-2', 'file-3']);
+
+    expect(fetchCalls).toHaveLength(3);
+    expect(fetchCalls[0].url).toContain('file-1');
+    expect(fetchCalls[1].url).toContain('file-2');
+    expect(fetchCalls[2].url).toContain('file-3');
+  });
+
+  test('handles empty array', async () => {
+    mockFetch(() => new Response(null, { status: 204 }));
+    await deleteGoogleDriveFiles(TOKEN, []);
+    expect(fetchCalls).toHaveLength(0);
+  });
+
+  test('silently ignores errors from individual deletes', async () => {
+    mockFetch(() => new Response('Server Error', { status: 500 }));
+
+    // Should not throw even though all individual deletes fail
+    await expect(deleteGoogleDriveFiles(TOKEN, ['bad-1', 'bad-2'])).resolves.toBeUndefined();
+  });
+
+  test('succeeds even if some files are already gone', async () => {
+    let callIdx = 0;
+    mockFetch(() => {
+      callIdx++;
+      if (callIdx === 2) return new Response('Not Found', { status: 404 });
+      return new Response(null, { status: 204 });
+    });
+
+    await expect(deleteGoogleDriveFiles(TOKEN, ['ok-1', 'gone-2', 'ok-3'])).resolves.toBeUndefined();
+    expect(fetchCalls).toHaveLength(3);
   });
 });

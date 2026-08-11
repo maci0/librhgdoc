@@ -12,7 +12,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 
 /** Map of file extensions to MIME types for recognized image formats. */
-const MIME_MAP: Record<string, string> = {
+const IMAGE_MIME_MAP: Record<string, string> = {
   '.png':  'image/png',
   '.jpg':  'image/jpeg',
   '.jpeg': 'image/jpeg',
@@ -25,8 +25,36 @@ const MIME_MAP: Record<string, string> = {
   '.ico':  'image/x-icon',
 };
 
+/** Map of file extensions to MIME types for document, office, archive, and data formats. */
+const DOC_MIME_MAP: Record<string, string> = {
+  '.pdf':  'application/pdf',
+  '.doc':  'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls':  'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt':  'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.zip':  'application/zip',
+  '.gz':   'application/gzip',
+  '.tar':  'application/x-tar',
+  '.csv':  'text/csv',
+  '.json': 'application/json',
+  '.xml':  'application/xml',
+  '.txt':  'text/plain',
+  '.md':   'text/markdown',
+  '.yaml': 'text/yaml',
+  '.yml':  'text/yaml',
+  '.html': 'text/html',
+  '.odt':  'application/vnd.oasis.opendocument.text',
+  '.ods':  'application/vnd.oasis.opendocument.spreadsheet',
+  '.odp':  'application/vnd.oasis.opendocument.presentation',
+};
+
+/** Combined MIME map for all recognized file types (images + documents). */
+const MIME_MAP: Record<string, string> = { ...IMAGE_MIME_MAP, ...DOC_MIME_MAP };
+
 /** Set of recognized image file extensions (e.g. `.png`, `.jpg`). */
-export const IMAGE_EXTENSIONS = new Set(Object.keys(MIME_MAP));
+export const IMAGE_EXTENSIONS = new Set(Object.keys(IMAGE_MIME_MAP));
 
 /**
  * Detect the MIME type of an image file from its extension.
