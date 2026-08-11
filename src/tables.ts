@@ -51,7 +51,11 @@ export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOpt
 
   for (const row of dataRows) {
     for (let c = 0; c < numCols; c++) {
-      const len = row[c]?.length ?? 0;
+      const cell = row[c] ?? '';
+      // Scale character count for backtick-wrapped (monospace) content:
+      // monospace fonts are ~1.3× wider per character than proportional text.
+      const codeMatch = cell.match(/^`([^`]+)`$/);
+      const len = codeMatch ? cell.length * 1.3 : cell.length;
       avgLen[c] += len;
       if (len > maxLen[c]) maxLen[c] = len;
     }
@@ -69,7 +73,7 @@ export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOpt
   // Floor each column's effective length to at least the header text length
   // so that column headers never get truncated/word-wrapped.
   for (let c = 0; c < numCols; c++) {
-    const hdrLen = (headers[c]?.length ?? 0) * 1.6; // 1.6× because header is bold + needs breathing room
+    const hdrLen = (headers[c]?.length ?? 0) * 1.8; // 1.8× because header is bold + needs breathing room
     if (effectiveLen[c] < hdrLen) effectiveLen[c] = hdrLen;
   }
 
