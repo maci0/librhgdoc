@@ -11,9 +11,9 @@
 export interface ColumnWidthOptions {
   /** Total page/container width in points. Default: 468 (6.5" at 72pt/inch). */
   pageWidthPt?: number;
-  /** Minimum column width in points. Default: 36 (~0.5"). */
+  /** Minimum column width in points. Default: 50 (~0.69"). */
   minColPt?: number;
-  /** Narrow column minimum for short content. Default: 28 (~0.39"). */
+  /** Narrow column minimum for short content. Default: 42 (~0.58"). */
   narrowColPt?: number;
   /** Average char count threshold for narrow treatment. Default: 6. */
   narrowThreshold?: number;
@@ -24,8 +24,8 @@ export interface ColumnWidthOptions {
  * Uses average cell content length with header-length floors and min constraints. */
 export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOptions): number[] {
   const PAGE_WIDTH_PT    = options?.pageWidthPt     ?? 468;
-  const MIN_COL_PT       = options?.minColPt        ?? 36;
-  const NARROW_COL_PT    = options?.narrowColPt     ?? 28;
+  const MIN_COL_PT       = options?.minColPt        ?? 50;
+  const NARROW_COL_PT    = options?.narrowColPt     ?? 42;
   const NARROW_THRESHOLD = options?.narrowThreshold ?? 6;
 
   const rows = markdownTable
@@ -38,8 +38,9 @@ export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOpt
   const numCols = rows[0].length;
   const headers = rows[0];
 
-  // Average content length per column (skip header, use data rows)
+  // Average and max content length per column (skip header, use data rows)
   const avgLen = Array(numCols).fill(0) as number[];
+  const maxLen = Array(numCols).fill(0) as number[];
   const dataRows = rows.slice(1); // skip header
   if (dataRows.length === 0) {
     const base = Math.floor(PAGE_WIDTH_PT / numCols);
@@ -50,23 +51,33 @@ export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOpt
 
   for (const row of dataRows) {
     for (let c = 0; c < numCols; c++) {
-      avgLen[c] += (row[c]?.length ?? 0);
+      const len = row[c]?.length ?? 0;
+      avgLen[c] += len;
+      if (len > maxLen[c]) maxLen[c] = len;
     }
   }
   for (let c = 0; c < numCols; c++) avgLen[c] /= dataRows.length;
+
+  // Effective length: blend of average and max to prevent the longest value
+  // from word-wrapping. Uses 70% avg + 30% max as a compromise between
+  // proportional fairness and accommodating outliers.
+  const effectiveLen = Array(numCols).fill(0) as number[];
+  for (let c = 0; c < numCols; c++) {
+    effectiveLen[c] = avgLen[c] * 0.7 + maxLen[c] * 0.3;
+  }
 
   // Floor each column's effective length to at least the header text length
   // so that column headers never get truncated/word-wrapped.
   for (let c = 0; c < numCols; c++) {
     const hdrLen = (headers[c]?.length ?? 0) * 1.6; // 1.6× because header is bold + needs breathing room
-    if (avgLen[c] < hdrLen) avgLen[c] = hdrLen;
+    if (effectiveLen[c] < hdrLen) effectiveLen[c] = hdrLen;
   }
 
   // Ensure minimum and compute proportional widths.
   // Columns with very short average content (IDs, priorities, short labels)
   // get a tighter minimum so they don't waste space in wide tables.
-  const total = avgLen.reduce((a, b) => a + Math.max(b, 3), 0); // min 3 chars
-  const widths = avgLen.map(len => {
+  const total = effectiveLen.reduce((a, b) => a + Math.max(b, 3), 0); // min 3 chars
+  const widths = effectiveLen.map(len => {
     const minPt = len <= NARROW_THRESHOLD ? NARROW_COL_PT : MIN_COL_PT;
     return Math.max(minPt, (Math.max(len, 3) / total) * PAGE_WIDTH_PT);
   });
