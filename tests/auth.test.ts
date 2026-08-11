@@ -10,6 +10,11 @@ import {
   loadToken,
   saveToken,
   refreshAccessToken,
+  exchangeCodeForToken,
+  defaultAuthConfig,
+  DEFAULT_CREDENTIALS_PATH,
+  DEFAULT_TOKEN_PATH,
+  DEFAULT_SCOPES,
   type OAuthCredentials,
   type OAuthToken,
 } from '../src/auth.ts';
@@ -301,6 +306,172 @@ describe('refreshAccessToken', () => {
       expect(capturedBody).toContain('client_id=cid');
       expect(capturedBody).toContain('client_secret=csec');
       expect(capturedBody).toContain('refresh_token=rt');
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+});
+
+
+// ─── DEFAULT_CREDENTIALS_PATH / DEFAULT_TOKEN_PATH ─────────────────────────
+
+describe('DEFAULT_CREDENTIALS_PATH', () => {
+  test('ends with credentials.json', () => {
+    expect(DEFAULT_CREDENTIALS_PATH.endsWith('credentials.json')).toBe(true);
+  });
+
+  test('contains .config/rhgdoc', () => {
+    expect(DEFAULT_CREDENTIALS_PATH).toContain('.config/rhgdoc');
+  });
+});
+
+describe('DEFAULT_TOKEN_PATH', () => {
+  test('ends with token.json', () => {
+    expect(DEFAULT_TOKEN_PATH.endsWith('token.json')).toBe(true);
+  });
+
+  test('contains .config/rhgdoc', () => {
+    expect(DEFAULT_TOKEN_PATH).toContain('.config/rhgdoc');
+  });
+});
+
+// ─── DEFAULT_SCOPES ────────────────────────────────────────────────────────
+
+describe('DEFAULT_SCOPES', () => {
+  test('contains documents scope', () => {
+    expect(DEFAULT_SCOPES).toContain('https://www.googleapis.com/auth/documents');
+  });
+
+  test('contains presentations scope', () => {
+    expect(DEFAULT_SCOPES).toContain('https://www.googleapis.com/auth/presentations');
+  });
+
+  test('contains drive scope', () => {
+    expect(DEFAULT_SCOPES).toContain('https://www.googleapis.com/auth/drive');
+  });
+});
+
+// ─── defaultAuthConfig ─────────────────────────────────────────────────────
+
+describe('defaultAuthConfig', () => {
+  test('returns correct default paths containing rhgdoc', () => {
+    const config = defaultAuthConfig();
+    expect(config.credentialsPath).toContain('rhgdoc');
+    expect(config.tokenPath).toContain('rhgdoc');
+  });
+
+  test('returns DEFAULT_SCOPES by default', () => {
+    const config = defaultAuthConfig();
+    expect(config.scopes).toBe(DEFAULT_SCOPES);
+  });
+
+  test('accepts credentialsPath override', () => {
+    const config = defaultAuthConfig({ credentialsPath: '/custom/creds.json' });
+    expect(config.credentialsPath).toBe('/custom/creds.json');
+    expect(config.tokenPath).toBe(DEFAULT_TOKEN_PATH);
+    expect(config.scopes).toBe(DEFAULT_SCOPES);
+  });
+
+  test('accepts tokenPath override', () => {
+    const config = defaultAuthConfig({ tokenPath: '/custom/token.json' });
+    expect(config.credentialsPath).toBe(DEFAULT_CREDENTIALS_PATH);
+    expect(config.tokenPath).toBe('/custom/token.json');
+  });
+
+  test('accepts scopes override', () => {
+    const customScopes = ['https://www.googleapis.com/auth/drive'];
+    const config = defaultAuthConfig({ scopes: customScopes });
+    expect(config.scopes).toEqual(customScopes);
+  });
+});
+
+// ─── exchangeCodeForToken ──────────────────────────────────────────────────
+
+describe('exchangeCodeForToken', () => {
+  const creds: OAuthCredentials = {
+    installed: {
+      client_id: 'cid',
+      client_secret: 'csec',
+      redirect_uris: ['http://localhost'],
+    },
+  };
+
+  test('successful exchange returns correct OAuthToken', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          access_token: 'new-at',
+          refresh_token: 'new-rt',
+          expires_in: 3600,
+          token_type: 'Bearer',
+          scope: 'email',
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+    try {
+      const token = await exchangeCodeForToken(creds, 'auth-code-123', 'http://localhost:9999');
+      expect(token.access_token).toBe('new-at');
+      expect(token.refresh_token).toBe('new-rt');
+      expect(token.token_type).toBe('Bearer');
+      expect(token.scope).toBe('email');
+      expect(token.expiry_date).toBeGreaterThan(Date.now());
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  test('sends correct parameters to token endpoint', async () => {
+    const origFetch = globalThis.fetch;
+    let capturedUrl = '';
+    let capturedBody = '';
+    globalThis.fetch = (async (url: any, init: any) => {
+      capturedUrl = typeof url === 'string' ? url : url.toString();
+      capturedBody = init.body.toString();
+      return new Response(
+        JSON.stringify({ access_token: 'x', expires_in: 3600 }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+    try {
+      await exchangeCodeForToken(creds, 'the-code', 'http://localhost:8080');
+      expect(capturedUrl).toContain('oauth2.googleapis.com/token');
+      expect(capturedBody).toContain('grant_type=authorization_code');
+      expect(capturedBody).toContain('code=the-code');
+      expect(capturedBody).toContain('client_id=cid');
+      expect(capturedBody).toContain('client_secret=csec');
+      expect(capturedBody).toContain(encodeURIComponent('http://localhost:8080'));
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  test('throws on error response', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({ error: 'invalid_grant', error_description: 'Code expired' }),
+        { status: 400 },
+      )) as typeof fetch;
+    try {
+      await expect(
+        exchangeCodeForToken(creds, 'bad-code', 'http://localhost'),
+      ).rejects.toThrow('Token exchange failed: invalid_grant');
+    } finally {
+      globalThis.fetch = origFetch;
+    }
+  });
+
+  test('defaults refresh_token to empty string when missing', async () => {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({ access_token: 'at', expires_in: 3600 }),
+        { status: 200 },
+      )) as typeof fetch;
+    try {
+      const token = await exchangeCodeForToken(creds, 'code', 'http://localhost');
+      expect(token.refresh_token).toBe('');
     } finally {
       globalThis.fetch = origFetch;
     }

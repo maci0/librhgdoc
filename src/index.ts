@@ -18,6 +18,7 @@ export {
   type OAuthCredentials,
   type OAuthToken,
   type AuthConfig,
+  type AuthFlowOptions,
   loadCredentials,
   loadToken,
   saveToken,
@@ -26,6 +27,12 @@ export {
   isTokenExpired,
   buildAuthUrl,
   extractClientInfo,
+  DEFAULT_CREDENTIALS_PATH,
+  DEFAULT_TOKEN_PATH,
+  DEFAULT_SCOPES,
+  defaultAuthConfig,
+  exchangeCodeForToken,
+  runAuthFlow,
 } from './auth.ts';
 export {
   type BatchUpdateRequest,

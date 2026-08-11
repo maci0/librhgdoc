@@ -7,7 +7,8 @@
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -237,4 +238,188 @@ export function extractClientInfo(
     clientSecret: cred.client_secret,
     redirectUri: cred.redirect_uris?.[0] ?? 'http://localhost',
   };
+}
+
+// ─── Default configuration ────────────────────────────────────────────────
+
+/** Default path for Google OAuth2 client credentials. */
+export const DEFAULT_CREDENTIALS_PATH = join(homedir(), '.config', 'rhgdoc', 'credentials.json');
+
+/** Default path for the persisted OAuth2 token. */
+export const DEFAULT_TOKEN_PATH = join(homedir(), '.config', 'rhgdoc', 'token.json');
+
+/** Combined OAuth2 scopes covering both templar (Docs) and herald (Slides) needs. */
+export const DEFAULT_SCOPES: string[] = [
+  'https://www.googleapis.com/auth/documents',
+  'https://www.googleapis.com/auth/presentations',
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/devstorage.read_write',
+  'https://www.googleapis.com/auth/script.deployments',
+  'https://www.googleapis.com/auth/script.projects',
+  'https://www.googleapis.com/auth/script.webapp.deploy',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+];
+
+/** Build an AuthConfig from defaults, optionally overriding individual fields. */
+export function defaultAuthConfig(overrides?: Partial<AuthConfig>): AuthConfig {
+  return {
+    credentialsPath: overrides?.credentialsPath ?? DEFAULT_CREDENTIALS_PATH,
+    tokenPath: overrides?.tokenPath ?? DEFAULT_TOKEN_PATH,
+    scopes: overrides?.scopes ?? DEFAULT_SCOPES,
+  };
+}
+
+// ─── Token exchange ───────────────────────────────────────────────────────
+
+/**
+ * Exchange an authorization code for OAuth2 tokens.
+ *
+ * Posts the code to Google's token endpoint and returns a full OAuthToken.
+ * Called after the user completes the browser consent flow.
+ *
+ * @throws If the exchange fails or Google returns an error.
+ */
+export async function exchangeCodeForToken(
+  credentials: OAuthCredentials,
+  code: string,
+  redirectUri: string,
+): Promise<OAuthToken> {
+  const { clientId, clientSecret } = extractClientInfo(credentials);
+
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    }),
+  });
+
+  const body = await res.json() as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    token_type?: string;
+    scope?: string;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (body.error || !body.access_token) {
+    throw new Error(
+      `Token exchange failed: ${body.error ?? 'no access_token'}` +
+        (body.error_description ? ` — ${body.error_description}` : ''),
+    );
+  }
+
+  return {
+    access_token: body.access_token,
+    refresh_token: body.refresh_token ?? '',
+    expiry_date: Date.now() + (body.expires_in ?? 3600) * 1000,
+    token_type: body.token_type ?? 'Bearer',
+    scope: body.scope,
+  };
+}
+
+// ─── Interactive auth flow ────────────────────────────────────────────────
+
+/** Options for the interactive auth flow. */
+export interface AuthFlowOptions {
+  /** Port for the local callback server. Defaults to 0 (random). */
+  port?: number;
+  /** Function to open a URL in the browser. Defaults to `open` command on macOS. */
+  openUrl?: (url: string) => Promise<void> | void;
+}
+
+/**
+ * Run an interactive OAuth2 browser consent flow.
+ *
+ * 1. Starts a local HTTP server on a random port
+ * 2. Opens the Google consent URL in the user's browser
+ * 3. Waits for the OAuth2 callback with the authorization code
+ * 4. Exchanges the code for tokens
+ * 5. Saves the token to disk
+ *
+ * @returns The obtained OAuthToken
+ * @throws On timeout (120s), user denial, or token exchange failure
+ */
+export async function runAuthFlow(
+  config: AuthConfig,
+  options?: AuthFlowOptions,
+): Promise<OAuthToken> {
+  const credentials = await loadCredentials(config.credentialsPath);
+  const state = crypto.randomUUID();
+
+  let resolveCode: (code: string) => void;
+  let rejectCode: (err: Error) => void;
+  const codePromise = new Promise<string>((res, rej) => {
+    resolveCode = res;
+    rejectCode = rej;
+  });
+
+  const server = Bun.serve({
+    port: options?.port ?? 0,
+    fetch(req) {
+      const url = new URL(req.url);
+      if (url.searchParams.get('state') !== state) {
+        return new Response('Invalid state parameter.', { status: 400 });
+      }
+      const error = url.searchParams.get('error');
+      if (error) {
+        rejectCode(new Error(`OAuth error: ${error}`));
+        queueMicrotask(() => server.stop());
+        return new Response(
+          '<html><body>Authentication failed. You can close this tab.</body></html>',
+          { headers: { 'Content-Type': 'text/html' }, status: 400 },
+        );
+      }
+      const code = url.searchParams.get('code');
+      if (code) {
+        resolveCode(code);
+        queueMicrotask(() => server.stop());
+        return new Response(
+          '<html><body>Authenticated! You can close this tab.</body></html>',
+          { headers: { 'Content-Type': 'text/html' } },
+        );
+      }
+      return new Response('Waiting for callback...', { status: 404 });
+    },
+  });
+
+  const redirectUri = `http://localhost:${server.port}`;
+  const authUrl = buildAuthUrl(credentials, config.scopes, redirectUri);
+  // Add state parameter
+  const authUrlWithState = `${authUrl}&state=${encodeURIComponent(state)}`;
+
+  process.stderr.write(`Opening browser for auth (port ${server.port})...\n`);
+
+  if (options?.openUrl) {
+    await options.openUrl(authUrlWithState);
+  } else {
+    // Default: use macOS `open` command
+    const proc = Bun.spawn(['open', authUrlWithState]);
+    await proc.exited;
+  }
+
+  const timeout = setTimeout(() => {
+    server.stop();
+    rejectCode(new Error('Auth timeout after 120 seconds'));
+  }, 120_000);
+
+  let code: string;
+  try {
+    code = await codePromise;
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const token = await exchangeCodeForToken(credentials, code, redirectUri);
+  await saveToken(config.tokenPath, token);
+  process.stderr.write(`Token saved to ${config.tokenPath}\n`);
+  return token;
 }
