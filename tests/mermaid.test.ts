@@ -119,6 +119,11 @@ describe('extractSvgDimensions', () => {
     const svg = '<svg width="auto" height="100%"></svg>';
     expect(extractSvgDimensions(svg)).toBeNull();
   });
+
+  test('handles single-quoted attributes', () => {
+    const svg = "<svg width='800' height='600'></svg>";
+    expect(extractSvgDimensions(svg)).toEqual({ width: 800, height: 600 });
+  });
 });
 
 // ─── renderMermaidPng ───────────────────────────────────────────────────────

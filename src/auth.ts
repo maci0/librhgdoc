@@ -398,28 +398,28 @@ export async function runAuthFlow(
 
   process.stderr.write(`Opening browser for auth (port ${server.port})...\n`);
 
-  if (options?.openUrl) {
-    await options.openUrl(authUrlWithState);
-  } else {
-    // Default: use macOS `open` command
-    const proc = Bun.spawn(['open', authUrlWithState]);
-    await proc.exited;
-  }
-
   const timeout = setTimeout(() => {
     server.stop();
     rejectCode(new Error('Auth timeout after 120 seconds'));
   }, 120_000);
 
-  let code: string;
   try {
-    code = await codePromise;
+    if (options?.openUrl) {
+      await options.openUrl(authUrlWithState);
+    } else {
+      // Default: use macOS `open` command
+      const proc = Bun.spawn(['open', authUrlWithState]);
+      await proc.exited;
+    }
+
+    const code = await codePromise;
+
+    const token = await exchangeCodeForToken(credentials, code, redirectUri);
+    await saveToken(config.tokenPath, token);
+    process.stderr.write(`Token saved to ${config.tokenPath}\n`);
+    return token;
   } finally {
     clearTimeout(timeout);
+    server.stop();
   }
-
-  const token = await exchangeCodeForToken(credentials, code, redirectUri);
-  await saveToken(config.tokenPath, token);
-  process.stderr.write(`Token saved to ${config.tokenPath}\n`);
-  return token;
 }

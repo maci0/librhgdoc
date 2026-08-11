@@ -37,4 +37,12 @@ describe('toSlug', () => {
   test('preserves digits', () => {
     expect(toSlug('Section 42')).toBe('section-42');
   });
+
+  test('strips leading hyphen from special char prefix', () => {
+    expect(toSlug('& hello')).toBe('hello');
+  });
+
+  test('strips trailing hyphen from trailing spaces', () => {
+    expect(toSlug(' hello ')).toBe('hello');
+  });
 });

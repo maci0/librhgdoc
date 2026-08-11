@@ -74,6 +74,11 @@ describe('lintBrandNames', () => {
     const issues = lintBrandNames(text);
     expect(issues).toHaveLength(0);
   });
+
+  test('does not flag brand name inside inline code', () => {
+    const issues = lintBrandNames('Use `openshift` as a value.');
+    expect(issues).toHaveLength(0);
+  });
 });
 
 // ─── lintBareUrls ────────────────────────────────────────────────────────────

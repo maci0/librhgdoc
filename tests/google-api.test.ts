@@ -351,4 +351,8 @@ describe('extractGoogleId', () => {
   test('returns null for invalid short string', () => {
     expect(extractGoogleId('too-short')).toBe(null);
   });
+
+  test('returns null for URL with too-short ID', () => {
+    expect(extractGoogleId('https://example.com/d/abc')).toBe(null);
+  });
 });

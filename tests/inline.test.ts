@@ -119,6 +119,23 @@ describe('stripInline', () => {
   });
 });
 
+describe('parseInline additional edge cases', () => {
+  test('empty link URL produces output without link', () => {
+    const runs = parseInline('[text]()');
+    expect(runs.length).toBeGreaterThan(0);
+    // Empty URL "()" — urlEnd === close + 2 so it won't match as link
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toContain('text');
+  });
+
+  test('single tilde is plain text', () => {
+    const runs = parseInline('hello~world');
+    // Single ~ is not strikethrough — no run should have strikethrough set
+    expect(runs.every(r => !r.strikethrough)).toBe(true);
+    expect(runs.map(r => r.text).join('')).toBe('hello~world');
+  });
+});
+
 describe('parseInline edge cases', () => {
   test('unclosed bold does not crash', () => {
     const runs = parseInline('**unclosed');

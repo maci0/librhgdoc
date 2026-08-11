@@ -46,6 +46,13 @@ describe('hexToRgb', () => {
   test('returns black for empty string', () => {
     expect(hexToRgb('')).toEqual({ red: 0, green: 0, blue: 0 });
   });
+
+  test('handles double hash ##FF0000', () => {
+    const rgb = hexToRgb('##FF0000');
+    expect(rgb.red).toBe(1);
+    expect(rgb.green).toBe(0);
+    expect(rgb.blue).toBe(0);
+  });
 });
 
 describe('rgbToHex', () => {
@@ -157,5 +164,13 @@ describe('normHex', () => {
 
   test('preserves hash on already-prefixed input', () => {
     expect(normHex('#000000')).toBe('#000000');
+  });
+
+  test('returns empty string for invalid input', () => {
+    expect(normHex('not-hex')).toBe('');
+  });
+
+  test('handles double hash', () => {
+    expect(normHex('##FF0000')).toBe('#ff0000');
   });
 });

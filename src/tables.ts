@@ -41,7 +41,12 @@ export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOpt
   // Average content length per column (skip header, use data rows)
   const avgLen = Array(numCols).fill(0) as number[];
   const dataRows = rows.slice(1); // skip header
-  if (dataRows.length === 0) return Array(numCols).fill(Math.round(PAGE_WIDTH_PT / numCols));
+  if (dataRows.length === 0) {
+    const base = Math.floor(PAGE_WIDTH_PT / numCols);
+    const widths = Array(numCols).fill(base);
+    widths[numCols - 1] = PAGE_WIDTH_PT - base * (numCols - 1);
+    return widths;
+  }
 
   for (const row of dataRows) {
     for (let c = 0; c < numCols; c++) {
@@ -68,5 +73,10 @@ export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOpt
 
   // Normalize to page width
   const widthSum = widths.reduce((a, b) => a + b, 0);
-  return widths.map(w => Math.round((w / widthSum) * PAGE_WIDTH_PT));
+  const rounded = widths.map(w => Math.round((w / widthSum) * PAGE_WIDTH_PT));
+  const roundedSum = rounded.reduce((a, b) => a + b, 0);
+  if (roundedSum !== PAGE_WIDTH_PT && rounded.length > 0) {
+    rounded[rounded.length - 1] += PAGE_WIDTH_PT - roundedSum;
+  }
+  return rounded;
 }

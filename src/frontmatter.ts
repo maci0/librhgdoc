@@ -84,7 +84,7 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
     }
 
     // ── Inline array `["a","b"]` or `[a, b]` ───────────────────────
-    if (val.startsWith('[')) {
+    if (val.startsWith('[') && val.endsWith(']')) {
       const inner = val.slice(1, -1);
       data[key] = inner
         .split(',')

@@ -143,7 +143,7 @@ export const GOOGLE_ID_RE = /^[a-zA-Z0-9_-]{25,}$/;
  * Accepts full URLs like `https://docs.google.com/document/d/ID/edit` or bare IDs. */
 export function extractGoogleId(input: string): string | null {
   const m = input.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (m) return m[1];
+  if (m && GOOGLE_ID_RE.test(m[1])) return m[1];
   return GOOGLE_ID_RE.test(input) ? input : null;
 }
 

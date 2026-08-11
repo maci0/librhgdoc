@@ -43,7 +43,7 @@ export const RH_COLORS = {
  * Accepts `#RRGGBB`, `RRGGBB`, `#RGB`, or `RGB`.
  */
 export function hexToRgb(hex: string): RgbColor {
-  let h = hex.replace('#', '');
+  let h = hex.replace(/^#+/, '');
   if (/^[0-9a-fA-F]{3}$/.test(h)) {
     h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
   }
@@ -72,8 +72,9 @@ export function rgbToHex(rgb: RgbColor): string {
 /** Normalize a hex color string: lowercase, ensure `#` prefix. */
 export function normHex(hex: string): string {
   if (!hex) return '';
-  const h = hex.startsWith('#') ? hex : `#${hex}`;
-  return h.toLowerCase();
+  const stripped = hex.replace(/^#+/, '');
+  if (!/^[0-9a-f]{3,8}$/i.test(stripped)) return '';
+  return `#${stripped.toLowerCase()}`;
 }
 
 /**

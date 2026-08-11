@@ -71,6 +71,11 @@ describe('parseFrontmatter', () => {
     const result = parseFrontmatter('items: [x, y, z]');
     expect(result.items).toEqual(['x', 'y', 'z']);
   });
+
+  test('treats unclosed inline array as scalar', () => {
+    const result = parseFrontmatter('tags: [a, b');
+    expect(result.tags).toBe('[a, b');
+  });
 });
 
 describe('stringifyFrontmatter', () => {

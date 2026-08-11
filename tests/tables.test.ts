@@ -106,4 +106,21 @@ describe('calcColumnWidths', () => {
     const sum = calcColumnWidths(wideTable).reduce((a, b) => a + b, 0);
     expect(Math.abs(sum - 468)).toBeLessThanOrEqual(1);
   });
+
+  test('header-only table sum equals page width exactly', () => {
+    const headerOnly = '| A | B | C |\n|---|---|---|';
+    const widths = calcColumnWidths(headerOnly);
+    expect(widths.reduce((a, b) => a + b, 0)).toBe(468);
+  });
+
+  test('7-column table sum equals page width exactly', () => {
+    const table = [
+      '| A | B | C | D | E | F | G |',
+      '|---|---|---|---|---|---|---|',
+      '| 1 | 2 | 3 | 4 | 5 | 6 | 7 |',
+    ].join('\n');
+    const widths = calcColumnWidths(table);
+    expect(widths).toHaveLength(7);
+    expect(widths.reduce((a, b) => a + b, 0)).toBe(468);
+  });
 });

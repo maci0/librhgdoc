@@ -79,15 +79,15 @@ export function applyRHTheme(mermaidSource: string): string {
 /**
  * Extract `width` and `height` from an SVG string.
  *
- * Looks for `width="…"` and `height="…"` attributes on the root
- * `<svg>` element.  Returns `null` if either attribute is missing or
+ * Looks for `width="…"` / `width='…'` and `height="…"` / `height='…'`
+ * attributes on the root `<svg>` element.  Returns `null` if either attribute is missing or
  * cannot be parsed as a number.
  */
 export function extractSvgDimensions(
   svg: string,
 ): { width: number; height: number } | null {
-  const wMatch = svg.match(/width="([^"]+)"/);
-  const hMatch = svg.match(/height="([^"]+)"/);
+  const wMatch = svg.match(/width=["']([^"']+)["']/);
+  const hMatch = svg.match(/height=["']([^"']+)["']/);
   if (!wMatch || !hMatch) return null;
   const width = parseFloat(wMatch[1]);
   const height = parseFloat(hMatch[1]);
@@ -112,7 +112,7 @@ export function extractSvgDimensions(
  */
 export async function renderMermaidPng(
   code: string,
-  options?: { scale?: number; maxWidth?: number },
+  options?: { scale?: number },
 ): Promise<Buffer> {
   // Dynamic imports — these are optional peer deps
   let renderMermaidSVG: typeof import('beautiful-mermaid')['renderMermaidSVG'];
