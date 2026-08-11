@@ -1,0 +1,35 @@
+{
+  "name": "librhgdoc",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "latest",
+    "@types/bun": "latest",
+    "beautiful-mermaid": "latest",
+    "highlight.js": "^11.11.1"
+  },
+  "peerDependencies": {
+    "beautiful-mermaid": "*",
+    "@resvg/resvg-js": "*",
+    "highlight.js": "*"
+  },
+  "peerDependenciesMeta": {
+    "beautiful-mermaid": {
+      "optional": true
+    },
+    "@resvg/resvg-js": {
+      "optional": true
+    },
+    "highlight.js": {
+      "optional": true
+    }
+  }
+}

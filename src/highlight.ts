@@ -1,0 +1,203 @@
+/**
+ * Syntax highlighting to colored text runs.
+ *
+ * Tokenizes source code via highlight.js and produces an array of
+ * `ColoredRun` objects — text segments with associated hex colours —
+ * suitable for rendering into Google Docs/Slides styled text.
+ *
+ * highlight.js is an optional peer dependency; import errors are
+ * caught gracefully and `tokenize` falls back to a single unstyled run.
+ *
+ * @module
+ */
+
+/** A text segment with a hex colour. */
+export interface ColoredRun {
+  /** The text content of this segment. */
+  text: string;
+  /** Hex colour string, e.g. `"#d73a49"`. */
+  color: string;
+}
+
+/** The result of highlighting a code block. */
+export interface HighlightResult {
+  /** Ordered array of coloured text runs. */
+  runs: ColoredRun[];
+  /** The language used (specified or auto-detected). */
+  language: string;
+}
+
+/**
+ * Mapping from highlight.js CSS class names to hex colours.
+ *
+ * Uses a neutral light-theme palette similar to GitHub's.
+ */
+export const HIGHLIGHT_COLORS: Record<string, string> = {
+  'hljs-keyword':           '#d73a49',
+  'hljs-selector-tag':      '#d73a49',
+  'hljs-string':            '#032f62',
+  'hljs-attr':              '#005cc5',
+  'hljs-attribute':         '#032f62',
+  'hljs-comment':           '#6a737d',
+  'hljs-meta':              '#6a737d',
+  'hljs-number':            '#005cc5',
+  'hljs-literal':           '#005cc5',
+  'hljs-title':             '#6f42c1',
+  'hljs-name':              '#22863a',
+  'hljs-built_in':          '#005cc5',
+  'hljs-variable':          '#e36209',
+  'hljs-template-variable': '#e36209',
+  'hljs-type':              '#d73a49',
+  'hljs-class':             '#6f42c1',
+  'hljs-function':          '#6f42c1',
+  'hljs-params':            '#24292e',
+  'hljs-symbol':            '#005cc5',
+  'hljs-regexp':            '#032f62',
+  'hljs-addition':          '#22863a',
+  'hljs-deletion':          '#d73a49',
+  'hljs-selector-class':    '#6f42c1',
+  'hljs-selector-id':       '#005cc5',
+  'hljs-tag':               '#22863a',
+  'hljs-template-tag':      '#d73a49',
+  'hljs-bullet':            '#005cc5',
+  'hljs-link':              '#032f62',
+  'hljs-subst':             '#24292e',
+  'hljs-section':           '#005cc5',
+  'hljs-emphasis':          '#24292e',
+  'hljs-strong':            '#24292e',
+  'hljs-formula':           '#005cc5',
+  'hljs-quote':             '#6a737d',
+  'hljs-doctag':            '#d73a49',
+};
+
+/** Default text colour when no token-specific colour applies. */
+const DEFAULT_COLOR = '#24292e';
+
+// Lazy-loaded hljs instance
+let _hljs: typeof import('highlight.js').default | null | undefined;
+
+function getHljs(): typeof import('highlight.js').default | null {
+  if (_hljs !== undefined) return _hljs;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _hljs = require('highlight.js') as typeof import('highlight.js').default;
+  } catch {
+    _hljs = null;
+  }
+  return _hljs;
+}
+
+/**
+ * Decode HTML entities produced by highlight.js.
+ */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#96;/g, '`')
+    .replace(/&#x60;/g, '`')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_raw, h) => {
+      const cp = parseInt(h, 16);
+      try {
+        return Number.isInteger(cp) && cp >= 0 && cp <= 0x10ffff
+          ? String.fromCodePoint(cp)
+          : _raw;
+      } catch { return _raw; }
+    })
+    .replace(/&#(\d+);/g, (_raw, n) => {
+      const cp = Number(n);
+      try {
+        return Number.isInteger(cp) && cp >= 0 && cp <= 0x10ffff
+          ? String.fromCodePoint(cp)
+          : _raw;
+      } catch { return _raw; }
+    });
+}
+
+/**
+ * Highlight source code and return an array of coloured text runs.
+ *
+ * If `language` is specified and recognized by highlight.js, it is used
+ * directly. Otherwise the language is auto-detected. When highlight.js
+ * is not installed, the code is returned as a single run with the default
+ * colour.
+ *
+ * @param code     - The source code to highlight.
+ * @param language - Optional language hint (e.g. `"typescript"`, `"python"`).
+ * @returns The highlight result with coloured runs and detected language.
+ */
+export function tokenize(code: string, language?: string): HighlightResult {
+  const hljs = getHljs();
+
+  if (!hljs) {
+    return {
+      runs: [{ text: code, color: DEFAULT_COLOR }],
+      language: language ?? 'text',
+    };
+  }
+
+  let result;
+  try {
+    const lang =
+      language && hljs.getLanguage(language) ? language : undefined;
+    result = lang
+      ? hljs.highlight(code, { language: lang })
+      : hljs.highlightAuto(code);
+  } catch {
+    return {
+      runs: [{ text: code, color: DEFAULT_COLOR }],
+      language: language ?? 'text',
+    };
+  }
+
+  const detectedLang = result.language ?? language ?? 'text';
+  const runs: ColoredRun[] = [];
+  const colorStack: string[] = [DEFAULT_COLOR];
+  const html = result.value;
+  let i = 0;
+  let buf = '';
+
+  const flushBuf = () => {
+    if (buf) {
+      runs.push({ text: decodeEntities(buf), color: colorStack[colorStack.length - 1] });
+      buf = '';
+    }
+  };
+
+  while (i < html.length) {
+    if (html[i] === '<') {
+      const end = html.indexOf('>', i);
+      if (end === -1) { buf += html[i++]; continue; }
+      const tag = html.slice(i + 1, end);
+      flushBuf();
+      if (tag.startsWith('/')) {
+        if (colorStack.length > 1) colorStack.pop();
+      } else if (tag.startsWith('span')) {
+        const cm = tag.match(/class="([^"]+)"/);
+        const cls = cm ? cm[1].split(' ')[0] : '';
+        colorStack.push(HIGHLIGHT_COLORS[cls] ?? DEFAULT_COLOR);
+      }
+      i = end + 1;
+    } else {
+      buf += html[i++];
+    }
+  }
+  flushBuf();
+
+  return { runs, language: detectedLang };
+}
+
+/**
+ * Get the list of languages supported by highlight.js.
+ *
+ * Returns an empty array if highlight.js is not installed.
+ */
+export function getSupportedLanguages(): string[] {
+  const hljs = getHljs();
+  if (!hljs) return [];
+  return hljs.listLanguages();
+}
