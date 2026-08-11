@@ -177,3 +177,22 @@ describe('InlineSeg type alias', () => {
     expect(run.italic).toBe(true);
   });
 });
+
+describe('parseInline italic/bold nesting', () => {
+  test('*italic **bold** italic* — italic wrapping bold', () => {
+    const runs = parseInline('*italic **bold** italic*');
+    // Should have italic runs and a bold+italic run, no leaked * chars
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).not.toContain('*');
+    expect(runs.some(r => r.italic && !r.bold)).toBe(true);
+    expect(runs.some(r => r.bold && r.italic)).toBe(true);
+  });
+
+  test('**bold *italic* bold** — bold wrapping italic', () => {
+    const runs = parseInline('**bold *italic* bold**');
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).not.toContain('*');
+    expect(runs.some(r => r.bold && !r.italic)).toBe(true);
+    expect(runs.some(r => r.bold && r.italic)).toBe(true);
+  });
+});

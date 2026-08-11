@@ -183,6 +183,16 @@ describe('buildAuthUrl', () => {
     const url = buildAuthUrl(creds, ['scope1']);
     expect(url).toContain(encodeURIComponent('http://localhost:3000/callback'));
   });
+
+  test('includes state parameter when provided', () => {
+    const url = buildAuthUrl(creds, ['scope1'], undefined, 'my-csrf-state');
+    expect(url).toContain('state=my-csrf-state');
+  });
+
+  test('omits state parameter when not provided', () => {
+    const url = buildAuthUrl(creds, ['scope1']);
+    expect(url).not.toContain('state=');
+  });
 });
 
 // ─── File I/O ───────────────────────────────────────────────────────────────
@@ -266,7 +276,7 @@ describe('refreshAccessToken', () => {
       })) as typeof fetch;
     try {
       await expect(refreshAccessToken(creds, baseToken)).rejects.toThrow(
-        'Token refresh failed: invalid_grant',
+        'Token refresh failed: HTTP 400',
       );
     } finally {
       globalThis.fetch = origFetch;
@@ -456,7 +466,7 @@ describe('exchangeCodeForToken', () => {
     try {
       await expect(
         exchangeCodeForToken(creds, 'bad-code', 'http://localhost'),
-      ).rejects.toThrow('Token exchange failed: invalid_grant');
+      ).rejects.toThrow('Token exchange failed: HTTP 400');
     } finally {
       globalThis.fetch = origFetch;
     }

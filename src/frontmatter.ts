@@ -24,8 +24,14 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
   const lines = text.split(/\r?\n/);
   let i = 0;
 
-  const parseScalar = (value: string): string =>
-    value.trim().replace(/^["']|["']$/g, '');
+  const parseScalar = (value: string): string => {
+    const trimmed = value.trim();
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+      return trimmed.slice(1, -1);
+    }
+    return trimmed;
+  };
 
   const parseKeyValue = (value: string): [string, string] | undefined => {
     const m = value.match(/^([A-Za-z0-9_][\w-]*):\s*(.*)$/);
@@ -86,11 +92,27 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
     // ── Inline array `["a","b"]` or `[a, b]` ───────────────────────
     if (val.startsWith('[') && val.endsWith(']')) {
       const inner = val.slice(1, -1);
-      data[key] = inner
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean)
-        .map((s: string) => s.replace(/^["']|["']$/g, ''));
+      const items: string[] = [];
+      let current = '';
+      let inQuote: string | null = null;
+      for (let ci = 0; ci < inner.length; ci++) {
+        const ch = inner[ci];
+        if (inQuote) {
+          if (ch === inQuote) inQuote = null;
+          else current += ch;
+        } else if (ch === '"' || ch === "'") {
+          inQuote = ch;
+        } else if (ch === ',') {
+          items.push(current.trim());
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      if (current.trim()) items.push(current.trim());
+      if (items.length > 0) {
+        data[key] = items;
+      }
       i++;
       continue;
     }
@@ -118,10 +140,13 @@ export function stringifyFrontmatter(data: Record<string, unknown>): string {
     const s = String(val);
     const needsQuote =
       s === '' ||
-      /^[\[{'"#]/.test(s) ||
+      /^[\[{'"#>|]/.test(s) ||
       s.includes(': ') ||
-      /^(true|false|null|~)$/i.test(s) ||
-      /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s);
+      s.includes(' #') ||
+      /^(true|false|null|~|yes|no|on|off)$/i.test(s) ||
+      /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s) ||
+      /^\d{4}-\d{2}-\d{2}/.test(s) ||
+      /^[+-]?(\.\d+|\.inf|\.nan)$/i.test(s);
     return needsQuote ? `"${s.replace(/"/g, '\\"')}"` : s;
   };
 

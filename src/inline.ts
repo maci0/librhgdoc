@@ -88,7 +88,7 @@ export function parseInline(
     if (text[i] === '*' && text[i + 1] !== '*') {
       let end = -1;
       for (let k = i + 1; k < text.length; k++) {
-        if (text[k] === '*' && text[k + 1] !== '*') { end = k; break; }
+        if (text[k] === '*' && text[k + 1] !== '*' && text[k - 1] !== '*') { end = k; break; }
       }
       if (end > i + 1) {
         for (const run of parseInline(text.slice(i + 1, end), parentBold, true))

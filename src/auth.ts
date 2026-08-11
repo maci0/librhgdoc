@@ -131,6 +131,11 @@ export async function refreshAccessToken(
     }),
   });
 
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Token refresh failed: HTTP ${res.status}${text ? ` — ${text}` : ''}`);
+  }
+
   const body = (await res.json()) as {
     access_token?: string;
     expires_in?: number;
@@ -200,22 +205,25 @@ export function isTokenExpired(token: OAuthToken, bufferMs = DEFAULT_BUFFER_MS):
  *
  * @param redirectUri — Override for the redirect URI; defaults to the first
  *                      URI listed in the credentials file.
+ * @param state      — Optional opaque state string for CSRF protection.
  */
 export function buildAuthUrl(
   credentials: OAuthCredentials,
   scopes: string[],
   redirectUri?: string,
+  state?: string,
 ): string {
   const info = extractClientInfo(credentials);
-  const params = new URLSearchParams({
+  const params: Record<string, string> = {
     client_id: info.clientId,
     redirect_uri: redirectUri ?? info.redirectUri,
     response_type: 'code',
     scope: scopes.join(' '),
     access_type: 'offline',
     prompt: 'consent',
-  });
-  return `${GOOGLE_AUTH_URL}?${params.toString()}`;
+  };
+  if (state) params.state = state;
+  return `${GOOGLE_AUTH_URL}?${new URLSearchParams(params).toString()}`;
 }
 
 /**
@@ -299,6 +307,11 @@ export async function exchangeCodeForToken(
       grant_type: 'authorization_code',
     }),
   });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Token exchange failed: HTTP ${res.status}${text ? ` — ${text}` : ''}`);
+  }
 
   const body = await res.json() as {
     access_token?: string;
@@ -392,9 +405,7 @@ export async function runAuthFlow(
   });
 
   const redirectUri = `http://localhost:${server.port}`;
-  const authUrl = buildAuthUrl(credentials, config.scopes, redirectUri);
-  // Add state parameter
-  const authUrlWithState = `${authUrl}&state=${encodeURIComponent(state)}`;
+  const authUrlWithState = buildAuthUrl(credentials, config.scopes, redirectUri, state);
 
   process.stderr.write(`Opening browser for auth (port ${server.port})...\n`);
 

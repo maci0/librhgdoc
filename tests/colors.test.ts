@@ -56,14 +56,14 @@ describe('hexToRgb', () => {
 });
 
 describe('rgbToHex', () => {
-  test('converts RgbColor to #RRGGBB', () => {
-    expect(rgbToHex({ red: 1, green: 0, blue: 0 })).toBe('#FF0000');
+  test('converts RgbColor to #rrggbb', () => {
+    expect(rgbToHex({ red: 1, green: 0, blue: 0 })).toBe('#ff0000');
   });
 
   test('round-trips with hexToRgb', () => {
     const hex = '#3A7BcD';
     const rgb = hexToRgb(hex);
-    expect(rgbToHex(rgb)).toBe('#3A7BCD');
+    expect(rgbToHex(rgb)).toBe('#3a7bcd');
   });
 
   test('converts black', () => {
@@ -71,11 +71,16 @@ describe('rgbToHex', () => {
   });
 
   test('converts white', () => {
-    expect(rgbToHex({ red: 1, green: 1, blue: 1 })).toBe('#FFFFFF');
+    expect(rgbToHex({ red: 1, green: 1, blue: 1 })).toBe('#ffffff');
   });
 
   test('clamps out-of-range channels', () => {
-    expect(rgbToHex({ red: 1.5, green: -0.5, blue: 2 })).toBe('#FF00FF');
+    expect(rgbToHex({ red: 1.5, green: -0.5, blue: 2 })).toBe('#ff00ff');
+  });
+
+  test('returns lowercase hex digits', () => {
+    const hex = rgbToHex({ red: 0.7333, green: 0.8667, blue: 0.9333 });
+    expect(hex).toBe(hex.toLowerCase());
   });
 });
 
@@ -135,7 +140,7 @@ describe('RH_COLORS', () => {
     expect(RH_COLORS.greyBg.red).toBeCloseTo(242 / 255, 4);
     expect(RH_COLORS.greyBg.green).toBeCloseTo(242 / 255, 4);
     expect(RH_COLORS.greyBg.blue).toBeCloseTo(242 / 255, 4);
-    expect(rgbToHex(RH_COLORS.greyBg)).toBe('#F2F2F2');
+    expect(rgbToHex(RH_COLORS.greyBg)).toBe('#f2f2f2');
   });
 });
 
@@ -172,5 +177,9 @@ describe('normHex', () => {
 
   test('handles double hash', () => {
     expect(normHex('##FF0000')).toBe('#ff0000');
+  });
+
+  test('rejects 4-char hex as invalid length', () => {
+    expect(normHex('#AABB')).toBe('');
   });
 });

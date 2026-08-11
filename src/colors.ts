@@ -66,14 +66,14 @@ export function rgbToHex(rgb: RgbColor): string {
   const r = clamp(rgb.red);
   const g = clamp(rgb.green);
   const b = clamp(rgb.blue);
-  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase();
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 /** Normalize a hex color string: lowercase, ensure `#` prefix. */
 export function normHex(hex: string): string {
   if (!hex) return '';
   const stripped = hex.replace(/^#+/, '');
-  if (!/^[0-9a-f]{3,8}$/i.test(stripped)) return '';
+  if (!/^[0-9a-f]{3}$|^[0-9a-f]{6}$|^[0-9a-f]{8}$/i.test(stripped)) return '';
   return `#${stripped.toLowerCase()}`;
 }
 

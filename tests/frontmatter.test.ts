@@ -203,3 +203,34 @@ describe('round-trip', () => {
     expect(re!.body.trim()).toBe('# Hello World\n\nBody text.');
   });
 });
+
+describe('parseScalar trailing quote preservation', () => {
+  test('preserves trailing quote that is not a delimiter', () => {
+    const result = parseFrontmatter('val: end quote"');
+    expect(result.val).toBe('end quote"');
+  });
+});
+
+describe('inline array with commas in quotes', () => {
+  test('does not split on commas inside quoted values', () => {
+    const result = parseFrontmatter('tags: ["hello, world", "foo"]');
+    expect(result.tags).toEqual(['hello, world', 'foo']);
+  });
+});
+
+describe('quoteYamlScalar extended patterns', () => {
+  test('quotes yes/no/on/off', () => {
+    const out = stringifyFrontmatter({ flag: 'yes' });
+    expect(out).toContain('"yes"');
+  });
+
+  test('quotes dates like 2024-01-01', () => {
+    const out = stringifyFrontmatter({ date: '2024-01-01' });
+    expect(out).toContain('"2024-01-01"');
+  });
+
+  test('quotes mid-string # (YAML comment)', () => {
+    const out = stringifyFrontmatter({ note: 'hello # world' });
+    expect(out).toContain('"hello # world"');
+  });
+});
