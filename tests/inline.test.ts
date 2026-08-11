@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { parseInline, stripInline, type TextRun } from '../src/inline.ts';
+import { parseInline, stripInline, type TextRun, type InlineSeg } from '../src/inline.ts';
 
 describe('parseInline', () => {
   test('plain text returns single run', () => {
@@ -116,5 +116,21 @@ describe('stripInline', () => {
 
   test('trims whitespace', () => {
     expect(stripInline('  spaced  ')).toBe('spaced');
+  });
+});
+
+describe('InlineSeg type alias', () => {
+  test('InlineSeg is assignable from TextRun', () => {
+    const run: TextRun = { text: 'hello', bold: true };
+    const seg: InlineSeg = run;
+    expect(seg.text).toBe('hello');
+    expect(seg.bold).toBe(true);
+  });
+
+  test('InlineSeg is assignable to TextRun', () => {
+    const seg: InlineSeg = { text: 'world', italic: true };
+    const run: TextRun = seg;
+    expect(run.text).toBe('world');
+    expect(run.italic).toBe(true);
   });
 });

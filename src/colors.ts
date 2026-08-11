@@ -33,6 +33,8 @@ export const RH_COLORS = {
   lightGray:{ red: 0.416,  green: 0.431,  blue: 0.451  } as RgbColor,
   /** Dark background — #292929 */
   darkBg:   { red: 0.161,  green: 0.161,  blue: 0.161  } as RgbColor,
+  /** Grey background for slide layouts — #F2F2F2. */
+  greyBg:   { red: 242 / 255, green: 242 / 255, blue: 242 / 255 } as RgbColor,
 } as const;
 
 /**

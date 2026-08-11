@@ -5,9 +5,9 @@
  */
 
 export { type RgbColor, RH_COLORS, hexToRgb, rgbToHex, isGrayHex } from './colors.ts';
-export { djb2, contentHash } from './hash.ts';
+export { djb2, contentHash, blockHash } from './hash.ts';
 export { toSlug } from './slug.ts';
-export { type TextRun, parseInline, stripInline } from './inline.ts';
+export { type TextRun, type InlineSeg, parseInline, stripInline } from './inline.ts';
 export {
   parseFrontmatter,
   stringifyFrontmatter,
@@ -35,6 +35,8 @@ export {
   emu,
   rgbColor,
   opaqueColor,
+  wff,
+  optionalColor,
   EMU_PER_PX,
   SLIDE_W_PX,
   SLIDE_H_PX,
@@ -68,6 +70,7 @@ export {
   type ColoredRun,
   type HighlightResult,
   HIGHLIGHT_COLORS,
+  DARK_HIGHLIGHT_COLORS,
   tokenize,
   getSupportedLanguages,
 } from './highlight.ts';

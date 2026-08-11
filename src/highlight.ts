@@ -70,6 +70,30 @@ export const HIGHLIGHT_COLORS: Record<string, string> = {
   'hljs-doctag':            '#d73a49',
 };
 
+/**
+ * Dark-theme colour palette matching herald's TOKEN_COLOR map.
+ *
+ * Designed for use on dark slide backgrounds.
+ */
+export const DARK_HIGHLIGHT_COLORS: Record<string, string> = {
+  'hljs-keyword':           '#ee0000',
+  'hljs-selector-tag':      '#ee0000',
+  'hljs-string':            '#daf1f1',
+  'hljs-attr':              '#daf1f1',
+  'hljs-attribute':         '#daf1f1',
+  'hljs-comment':           '#6a6e73',
+  'hljs-meta':              '#6a6e73',
+  'hljs-number':            '#147878',
+  'hljs-literal':           '#147878',
+  'hljs-title':             '#f6f6f6',
+  'hljs-name':              '#f6f6f6',
+  'hljs-built_in':          '#f6f6f6',
+  'hljs-variable':          '#fce3e3',
+  'hljs-template-variable': '#fce3e3',
+  'hljs-type':              '#daf1f1',
+  'hljs-class':             '#daf1f1',
+};
+
 /** Default text colour when no token-specific colour applies. */
 const DEFAULT_COLOR = '#24292e';
 
@@ -130,8 +154,9 @@ function decodeEntities(s: string): string {
  * @param language - Optional language hint (e.g. `"typescript"`, `"python"`).
  * @returns The highlight result with coloured runs and detected language.
  */
-export function tokenize(code: string, language?: string): HighlightResult {
+export function tokenize(code: string, language?: string, colorMap?: Record<string, string>): HighlightResult {
   const hljs = getHljs();
+  const colors = colorMap ?? HIGHLIGHT_COLORS;
 
   if (!hljs) {
     return {
@@ -179,7 +204,7 @@ export function tokenize(code: string, language?: string): HighlightResult {
       } else if (tag.startsWith('span')) {
         const cm = tag.match(/class="([^"]+)"/);
         const cls = cm ? cm[1].split(' ')[0] : '';
-        colorStack.push(HIGHLIGHT_COLORS[cls] ?? DEFAULT_COLOR);
+        colorStack.push(colors[cls] ?? DEFAULT_COLOR);
       }
       i = end + 1;
     } else {

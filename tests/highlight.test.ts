@@ -3,6 +3,7 @@ import {
   tokenize,
   getSupportedLanguages,
   HIGHLIGHT_COLORS,
+  DARK_HIGHLIGHT_COLORS,
   type ColoredRun,
   type HighlightResult,
 } from '../src/highlight.ts';
@@ -154,6 +155,84 @@ describe('tokenize', () => {
       expect(result.runs).toHaveLength(1);
       expect(result.runs[0].text).toBe('const x = 42;');
       expect(result.language).toBe('javascript');
+    });
+  }
+});
+
+// ─── DARK_HIGHLIGHT_COLORS ───────────────────────────────────────────────────
+
+describe('DARK_HIGHLIGHT_COLORS', () => {
+  test('is a non-empty object', () => {
+    expect(typeof DARK_HIGHLIGHT_COLORS).toBe('object');
+    expect(Object.keys(DARK_HIGHLIGHT_COLORS).length).toBeGreaterThan(0);
+  });
+
+  test('has entries for common token types', () => {
+    expect(DARK_HIGHLIGHT_COLORS['hljs-keyword']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-string']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-comment']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-number']).toBeDefined();
+  });
+
+  test('all values are hex colour strings', () => {
+    for (const [, value] of Object.entries(DARK_HIGHLIGHT_COLORS)) {
+      expect(value).toMatch(/^#[0-9a-fA-F]{6}$/);
+    }
+  });
+
+  test('uses Red Hat red for keywords', () => {
+    expect(DARK_HIGHLIGHT_COLORS['hljs-keyword']).toBe('#ee0000');
+  });
+
+  test('differs from HIGHLIGHT_COLORS', () => {
+    expect(DARK_HIGHLIGHT_COLORS['hljs-keyword']).not.toBe(HIGHLIGHT_COLORS['hljs-keyword']);
+  });
+});
+
+// ─── tokenize with custom colorMap ───────────────────────────────────────────
+
+describe('tokenize with custom colorMap', () => {
+  if (hasHljs) {
+    test('uses custom color map for token coloring', () => {
+      const customMap: Record<string, string> = {
+        'hljs-keyword': '#ff0000',
+      };
+      const result = tokenize('const x = 42;', 'javascript', customMap);
+      const keywordRun = result.runs.find((r) => r.text === 'const');
+      if (keywordRun) {
+        expect(keywordRun.color).toBe('#ff0000');
+      }
+    });
+
+    test('uses DARK_HIGHLIGHT_COLORS as colorMap', () => {
+      const result = tokenize('const x = 42;', 'javascript', DARK_HIGHLIGHT_COLORS);
+      const keywordRun = result.runs.find((r) => r.text === 'const');
+      if (keywordRun) {
+        expect(keywordRun.color).toBe(DARK_HIGHLIGHT_COLORS['hljs-keyword']);
+      }
+    });
+
+    test('falls back to default color for unmapped tokens', () => {
+      const result = tokenize('const x = 42;', 'javascript', {});
+      // All runs should fall back to default color #24292e
+      for (const run of result.runs) {
+        expect(run.color).toBe('#24292e');
+      }
+    });
+
+    test('preserves text content regardless of color map', () => {
+      const code = 'const x = 42;';
+      const defaultResult = tokenize(code, 'javascript');
+      const darkResult = tokenize(code, 'javascript', DARK_HIGHLIGHT_COLORS);
+      const defaultText = defaultResult.runs.map((r) => r.text).join('');
+      const darkText = darkResult.runs.map((r) => r.text).join('');
+      expect(defaultText).toBe(darkText);
+    });
+  } else {
+    test('returns single run when highlight.js not installed (colorMap ignored)', () => {
+      const result = tokenize('const x = 42;', 'javascript', DARK_HIGHLIGHT_COLORS);
+      expect(result.runs).toHaveLength(1);
+      expect(result.runs[0].text).toBe('const x = 42;');
     });
   }
 });

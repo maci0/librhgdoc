@@ -68,8 +68,7 @@ describe('stringifyFrontmatter', () => {
     const out = stringifyFrontmatter({ title: 'Hello', version: '1.0' });
     expect(out).toContain('title: Hello');
     expect(out).toContain('version: "1.0"');  // numeric-like → quoted
-    expect(out).toStartWith('---\n');
-    expect(out).toEndWith('---\n');
+    expect(out).not.toContain('---');
   });
 
   test('serialises arrays', () => {
@@ -157,9 +156,7 @@ describe('round-trip', () => {
     const original = 'title: My Doc\nauthor: Alice\nversion: 2';
     const parsed = parseFrontmatter(original);
     const serialized = stringifyFrontmatter(parsed);
-    const reparsed = parseFrontmatter(
-      serialized.replace(/^---\n/, '').replace(/\n---\n$/, ''),
-    );
+    const reparsed = parseFrontmatter(serialized);
     expect(reparsed.title).toBe(parsed.title);
     expect(reparsed.author).toBe(parsed.author);
   });

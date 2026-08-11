@@ -91,11 +91,19 @@ describe('RH_COLORS', () => {
     expect(RH_COLORS.gray).toBeDefined();
     expect(RH_COLORS.lightGray).toBeDefined();
     expect(RH_COLORS.darkBg).toBeDefined();
+    expect(RH_COLORS.greyBg).toBeDefined();
   });
 
   test('red matches #EE0000', () => {
     expect(RH_COLORS.red.red).toBeCloseTo(0.9333, 3);
     expect(RH_COLORS.red.green).toBe(0);
     expect(RH_COLORS.red.blue).toBe(0);
+  });
+
+  test('greyBg matches #F2F2F2', () => {
+    expect(RH_COLORS.greyBg.red).toBeCloseTo(242 / 255, 4);
+    expect(RH_COLORS.greyBg.green).toBeCloseTo(242 / 255, 4);
+    expect(RH_COLORS.greyBg.blue).toBeCloseTo(242 / 255, 4);
+    expect(rgbToHex(RH_COLORS.greyBg)).toBe('#F2F2F2');
   });
 });

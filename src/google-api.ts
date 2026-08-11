@@ -124,6 +124,16 @@ export function opaqueColor(
   return { rgbColor: { red: r, green: g, blue: b } };
 }
 
+/** Create a WeightedFontFamily object for Google Docs/Slides API. */
+export function wff(fontFamily: string, weight = 400): { fontFamily: string; weight: number } {
+  return { fontFamily, weight };
+}
+
+/** Wrap an RgbColor in the OptionalColor envelope used by the Docs API. */
+export function optionalColor(color: { red: number; green: number; blue: number }): { color: { rgbColor: { red: number; green: number; blue: number } } } {
+  return { color: { rgbColor: color } };
+}
+
 // ─── Unit conversion ─────────────────────────────────────────────────────────
 
 /**

@@ -4,6 +4,8 @@ import {
   emu,
   rgbColor,
   opaqueColor,
+  wff,
+  optionalColor,
   toEmu,
   batchUpdate,
   EMU_PER_PX,
@@ -244,5 +246,45 @@ describe('batchUpdate', () => {
     } finally {
       globalThis.fetch = origFetch;
     }
+  });
+});
+
+// ─── wff ───────────────────────────────────────────────────────────────────
+
+describe('wff', () => {
+  test('creates WeightedFontFamily with default weight', () => {
+    expect(wff('Roboto')).toEqual({ fontFamily: 'Roboto', weight: 400 });
+  });
+
+  test('creates WeightedFontFamily with custom weight', () => {
+    expect(wff('Roboto', 700)).toEqual({ fontFamily: 'Roboto', weight: 700 });
+  });
+
+  test('handles empty font name', () => {
+    expect(wff('')).toEqual({ fontFamily: '', weight: 400 });
+  });
+});
+
+// ─── optionalColor ─────────────────────────────────────────────────────────
+
+describe('optionalColor', () => {
+  test('wraps RgbColor in Docs API OptionalColor envelope', () => {
+    const result = optionalColor({ red: 0.9, green: 0, blue: 0 });
+    expect(result).toEqual({
+      color: { rgbColor: { red: 0.9, green: 0, blue: 0 } },
+    });
+  });
+
+  test('returns nested structure with correct path', () => {
+    const result = optionalColor({ red: 1, green: 1, blue: 1 });
+    expect(result.color.rgbColor.red).toBe(1);
+    expect(result.color.rgbColor.green).toBe(1);
+    expect(result.color.rgbColor.blue).toBe(1);
+  });
+
+  test('preserves the input color reference', () => {
+    const c = { red: 0.5, green: 0.25, blue: 0.75 };
+    const result = optionalColor(c);
+    expect(result.color.rgbColor).toBe(c);
   });
 });

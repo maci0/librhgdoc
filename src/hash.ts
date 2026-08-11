@@ -35,3 +35,6 @@ export function contentHash(type: string, text: string, extra = ''): string {
     : text.trim().replace(/\s+/g, ' ');
   return djb2(`${type}\x00${normalized}\x00${extra}`);
 }
+
+/** Alias for {@link contentHash}. Matches the name used in templar. */
+export const blockHash = contentHash;

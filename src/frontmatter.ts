@@ -107,11 +107,13 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
 }
 
 /**
- * Serialise a data record back to a YAML frontmatter block.
+ * Serialise a data record back to YAML frontmatter body text.
  *
- * The output includes the `---` delimiters. Scalars that YAML would
- * misparse (empty strings, leading special characters, boolean/null
- * literals, bare numbers) are automatically quoted.
+ * Returns just the YAML body **without** `---` delimiters. Callers that
+ * need the full fenced block (e.g. {@link replaceFrontmatter}) add the
+ * delimiters themselves. Scalars that YAML would misparse (empty
+ * strings, leading special characters, boolean/null literals, bare
+ * numbers) are automatically quoted.
  *
  * @param data - Key→value record to serialise.
  */
@@ -153,7 +155,7 @@ export function stringifyFrontmatter(data: Record<string, unknown>): string {
         : `${k}: ${s}\n`;
     }
   }
-  return `---\n${out}---\n`;
+  return out;
 }
 
 /** Regex matching a YAML frontmatter block at the start of a string. */
@@ -192,5 +194,5 @@ export function replaceFrontmatter(
 ): string {
   const newFm = stringifyFrontmatter(data);
   const rest = markdown.replace(FRONTMATTER_BLOCK_RE, '');
-  return `${newFm}${rest}`;
+  return `---\n${newFm}---\n${rest}`;
 }

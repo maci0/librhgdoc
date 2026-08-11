@@ -154,6 +154,9 @@ export function parseInline(
  * Removes `**bold**`, `*italic*`, `` `code` ``, `[text](url)`, and
  * `~~strikethrough~~` markers.
  */
+/** Alias for {@link TextRun}. Matches the name used in templar. */
+export type InlineSeg = TextRun;
+
 export function stripInline(s: string): string {
   return s
     .replace(/\*\*(.+?)\*\*/g, '$1')

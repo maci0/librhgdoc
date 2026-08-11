@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { djb2, contentHash } from '../src/hash.ts';
+import { djb2, contentHash, blockHash } from '../src/hash.ts';
 
 describe('djb2', () => {
   test('returns a base-36 string', () => {
@@ -56,5 +56,16 @@ describe('contentHash', () => {
     const a = contentHash('body', 'hello');
     const b = contentHash('h1', 'hello');
     expect(a).not.toBe(b);
+  });
+});
+
+describe('blockHash', () => {
+  test('is the same function as contentHash', () => {
+    expect(blockHash).toBe(contentHash);
+  });
+
+  test('produces identical output to contentHash', () => {
+    expect(blockHash('body', 'hello')).toBe(contentHash('body', 'hello'));
+    expect(blockHash('code', 'x = 1', 'py')).toBe(contentHash('code', 'x = 1', 'py'));
   });
 });
