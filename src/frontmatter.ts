@@ -85,16 +85,12 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
 
     // ── Inline array `["a","b"]` or `[a, b]` ───────────────────────
     if (val.startsWith('[')) {
-      const matches = val.match(/"([^"]*)"|'([^']*)'/g);
-      if (matches && matches.length > 0) {
-        data[key] = matches.map(s => s.slice(1, -1));
-      } else {
-        data[key] = val
-          .slice(1, -1)
-          .split(',')
-          .map((s: string) => s.trim())
-          .filter(Boolean);
-      }
+      const inner = val.slice(1, -1);
+      data[key] = inner
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean)
+        .map((s: string) => s.replace(/^["']|["']$/g, ''));
       i++;
       continue;
     }
@@ -118,6 +114,17 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
  * @param data - Key→value record to serialise.
  */
 export function stringifyFrontmatter(data: Record<string, unknown>): string {
+  const quoteYamlScalar = (val: unknown): string => {
+    const s = String(val);
+    const needsQuote =
+      s === '' ||
+      /^[\[{'"#]/.test(s) ||
+      s.includes(': ') ||
+      /^(true|false|null|~)$/i.test(s) ||
+      /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s);
+    return needsQuote ? `"${s.replace(/"/g, '\\"')}"` : s;
+  };
+
   let out = '';
   for (const [k, v] of Object.entries(data)) {
     if (v === undefined || v === null) continue;
@@ -131,28 +138,19 @@ export function stringifyFrontmatter(data: Record<string, unknown>): string {
           );
           if (entries.length === 0) continue;
           const [[firstKey, firstVal], ...rest] = entries;
-          itemLines.push(`  - ${firstKey}: ${firstVal}`);
+          itemLines.push(`  - ${firstKey}: ${quoteYamlScalar(firstVal)}`);
           for (const [childKey, childVal] of rest) {
-            itemLines.push(`    ${childKey}: ${childVal}`);
+            itemLines.push(`    ${childKey}: ${quoteYamlScalar(childVal)}`);
           }
         } else {
-          itemLines.push(`  - ${item}`);
+          itemLines.push(`  - ${quoteYamlScalar(item)}`);
         }
       }
       if (itemLines.length > 0) {
         out += `${k}:\n${itemLines.join('\n')}\n`;
       }
     } else {
-      const s = String(v);
-      const needsQuote =
-        s === '' ||
-        /^[\[{'"#]/.test(s) ||
-        s.includes(': ') ||
-        /^(true|false|null|~)$/i.test(s) ||
-        /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s);
-      out += needsQuote
-        ? `${k}: "${s.replace(/"/g, '\\"')}"\n`
-        : `${k}: ${s}\n`;
+      out += `${k}: ${quoteYamlScalar(v)}\n`;
     }
   }
   return out;

@@ -10,6 +10,7 @@
 /** Format milliseconds as a human-readable duration string.
  * Returns `"450ms"` for sub-second durations, `"2.3s"` for longer ones. */
 export function fmtTime(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return '0ms';
   return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 

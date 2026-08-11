@@ -35,6 +35,18 @@ describe('fmtTime', () => {
   test('formats 1500ms', () => {
     expect(fmtTime(1500)).toBe('1.5s');
   });
+
+  test('returns 0ms for NaN', () => {
+    expect(fmtTime(NaN)).toBe('0ms');
+  });
+
+  test('returns 0ms for Infinity', () => {
+    expect(fmtTime(Infinity)).toBe('0ms');
+  });
+
+  test('returns 0ms for negative values', () => {
+    expect(fmtTime(-100)).toBe('0ms');
+  });
 });
 
 // ─── parsePresenterEntry ─────────────────────────────────────────────────────

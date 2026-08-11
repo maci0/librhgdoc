@@ -30,6 +30,22 @@ describe('hexToRgb', () => {
     expect(rgb.green).toBeCloseTo(0.502, 2);
     expect(rgb.blue).toBeCloseTo(0.502, 2);
   });
+
+  test('converts shorthand #FFF to white', () => {
+    expect(hexToRgb('#FFF')).toEqual({ red: 1, green: 1, blue: 1 });
+  });
+
+  test('converts shorthand #F00 to red', () => {
+    expect(hexToRgb('#F00')).toEqual({ red: 1, green: 0, blue: 0 });
+  });
+
+  test('returns black for invalid hex "garbage"', () => {
+    expect(hexToRgb('garbage')).toEqual({ red: 0, green: 0, blue: 0 });
+  });
+
+  test('returns black for empty string', () => {
+    expect(hexToRgb('')).toEqual({ red: 0, green: 0, blue: 0 });
+  });
 });
 
 describe('rgbToHex', () => {
@@ -49,6 +65,10 @@ describe('rgbToHex', () => {
 
   test('converts white', () => {
     expect(rgbToHex({ red: 1, green: 1, blue: 1 })).toBe('#FFFFFF');
+  });
+
+  test('clamps out-of-range channels', () => {
+    expect(rgbToHex({ red: 1.5, green: -0.5, blue: 2 })).toBe('#FF00FF');
   });
 });
 
@@ -80,6 +100,10 @@ describe('isGrayHex', () => {
   test('rejects null/empty/short', () => {
     expect(isGrayHex('')).toBe(false);
     expect(isGrayHex('#FFF')).toBe(false);
+  });
+
+  test('detects gray without # prefix', () => {
+    expect(isGrayHex('808080')).toBe(true);
   });
 });
 

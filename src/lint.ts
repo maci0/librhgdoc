@@ -36,7 +36,7 @@ export function lintBrandNames(text: string): LintMessage[] {
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
-    if (/^```/.test(raw)) { inCode = !inCode; continue; }
+    if (/^\s*```/.test(raw) || /^\s*~~~/.test(raw)) { inCode = !inCode; continue; }
     if (inCode) continue;
 
     // Strip URLs before scanning so "platform=openshift" inside a URL doesn't false-positive
@@ -63,22 +63,21 @@ export function lintBareUrls(text: string): LintMessage[] {
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
-    if (/^```/.test(raw)) { inCode = !inCode; continue; }
+    if (/^\s*```/.test(raw) || /^\s*~~~/.test(raw)) { inCode = !inCode; continue; }
     if (inCode) continue;
 
     // Skip lines that are just a URL (common in reference sections)
     if (/^https?:\/\//.test(raw.trim())) continue;
 
-    // Check for URLs not inside []() or <>
-    if (/https?:\/\/[^\s)>]+/.test(raw) && !/\]\(https?:\/\//.test(raw)) {
-      const bareUrl = raw.match(/(?<!\()(https?:\/\/[^\s)>\]]+)/)?.[0] ?? '';
-      if (bareUrl.length > 20) {
-        issues.push({
-          line: i + 1,
-          level: 'warn',
-          msg: `Bare URL in prose — wrap in markdown link syntax`,
-        });
-      }
+    // Remove markdown link constructs, then check remaining text for bare URLs
+    const stripped = raw.replace(/\[[^\]]*\]\([^)]*\)/g, '');
+    const bareUrl = stripped.match(/(?<!\()(https?:\/\/[^\s)>\]]+)/)?.[0] ?? '';
+    if (bareUrl.length > 20) {
+      issues.push({
+        line: i + 1,
+        level: 'warn',
+        msg: `Bare URL in prose — wrap in markdown link syntax`,
+      });
     }
   }
 

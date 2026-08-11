@@ -337,4 +337,18 @@ describe('extractGoogleId', () => {
     const url = 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/view';
     expect(extractGoogleId(url)).toBe('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms');
   });
+
+  test('extracts ID from full Google Docs URL', () => {
+    expect(extractGoogleId('https://docs.google.com/document/d/1a2b3c4d5e6f7g8h9i0j1k2l3m4n/edit'))
+      .toBe('1a2b3c4d5e6f7g8h9i0j1k2l3m4n');
+  });
+
+  test('extracts ID from full Google Slides URL', () => {
+    expect(extractGoogleId('https://docs.google.com/presentation/d/1a2b3c4d5e6f7g8h9i0j1k2l3m4n/edit'))
+      .toBe('1a2b3c4d5e6f7g8h9i0j1k2l3m4n');
+  });
+
+  test('returns null for invalid short string', () => {
+    expect(extractGoogleId('too-short')).toBe(null);
+  });
 });

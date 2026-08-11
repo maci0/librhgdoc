@@ -30,7 +30,7 @@ export function calcColumnWidths(markdownTable: string, options?: ColumnWidthOpt
 
   const rows = markdownTable
     .split('\n')
-    .filter(l => l.trim().startsWith('|') && !/^\|[\s:|-]+\|$/.test(l))
+    .filter(l => { const t = l.trim(); return t.startsWith('|') && !/^\|[\s:|-]+\|$/.test(t); })
     .map(l => l.split('|').slice(1, -1).map(c => c.trim()));
 
   if (!rows.length || !rows[0]?.length) return [];

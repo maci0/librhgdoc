@@ -191,6 +191,12 @@ describe('findImageRefs', () => {
     const refs = findImageRefs('Just some text, no images here.');
     expect(refs).toHaveLength(0);
   });
+
+  test('skips images inside tilde code fence', () => {
+    const md = '~~~\n![img](path.png)\n~~~';
+    const refs = findImageRefs(md);
+    expect(refs).toHaveLength(0);
+  });
 });
 
 // ─── readImageAsBase64 ────────────────────────────────────────────────────────

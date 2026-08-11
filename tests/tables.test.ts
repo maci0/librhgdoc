@@ -78,4 +78,32 @@ describe('calcColumnWidths', () => {
       expect(w).toBe(Math.round(w));
     }
   });
+
+  test('filters out indented separator row', () => {
+    const table = [
+      '| A | B |',
+      '  |---|---|',
+      '| 1 | 2 |',
+    ].join('\n');
+    const widths = calcColumnWidths(table);
+    expect(widths).toHaveLength(2);
+    // The separator row should not be counted as data
+    expect(widths.reduce((a, b) => a + b, 0)).toBe(468);
+  });
+
+  test('column widths sum equals page width for simple table', () => {
+    const sum = calcColumnWidths(simpleTable).reduce((a, b) => a + b, 0);
+    expect(Math.abs(sum - 468)).toBeLessThanOrEqual(1);
+  });
+
+  test('column widths sum equals page width for wide table', () => {
+    const wideTable = [
+      '| ID | Name | Description | Category | Notes |',
+      '|---|---|---|---|---|',
+      '| 1 | Widget | A small widget | Tools | Good |',
+      '| 2 | Gadget | A fancy gadget | Electronics | Great |',
+    ].join('\n');
+    const sum = calcColumnWidths(wideTable).reduce((a, b) => a + b, 0);
+    expect(Math.abs(sum - 468)).toBeLessThanOrEqual(1);
+  });
 });

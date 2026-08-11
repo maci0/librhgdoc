@@ -119,6 +119,32 @@ describe('stripInline', () => {
   });
 });
 
+describe('parseInline edge cases', () => {
+  test('unclosed bold does not crash', () => {
+    const runs = parseInline('**unclosed');
+    expect(runs.length).toBeGreaterThan(0);
+  });
+
+  test('unclosed italic does not crash', () => {
+    const runs = parseInline('*unclosed');
+    expect(runs.length).toBeGreaterThan(0);
+  });
+
+  test('stripInline removes all formatting that parseInline parses', () => {
+    const input = '**bold** *italic* `code` [link](url) ~~strike~~';
+    const stripped = stripInline(input);
+    // stripped text should contain no markdown formatting characters
+    expect(stripped).not.toContain('**');
+    expect(stripped).not.toContain('`');
+    expect(stripped).not.toContain('~~');
+    expect(stripped).not.toContain('](');
+    // parseInline and stripInline should agree on the plain text content
+    const runs = parseInline(input);
+    const plainFromRuns = runs.map(r => r.text).join('');
+    expect(plainFromRuns).toBe(stripped);
+  });
+});
+
 describe('InlineSeg type alias', () => {
   test('InlineSeg is assignable from TextRun', () => {
     const run: TextRun = { text: 'hello', bold: true };

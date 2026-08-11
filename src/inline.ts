@@ -148,15 +148,15 @@ export function parseInline(
   return runs.filter(r => r.text);
 }
 
+/** Alias for {@link TextRun}. Matches the name used in templar. */
+export type InlineSeg = TextRun;
+
 /**
  * Strip inline Markdown formatting, returning plain text.
  *
  * Removes `**bold**`, `*italic*`, `` `code` ``, `[text](url)`, and
  * `~~strikethrough~~` markers.
  */
-/** Alias for {@link TextRun}. Matches the name used in templar. */
-export type InlineSeg = TextRun;
-
 export function stripInline(s: string): string {
   return s
     .replace(/\*\*(.+?)\*\*/g, '$1')

@@ -36,7 +36,7 @@ export async function uploadImageToDrive(options: {
   name?: string;
 }): Promise<UploadedImage> {
   const { token, base64, mimeType, name = 'image' } = options;
-  const boundary = '----librhgdoc-boundary';
+  const boundary = `----librhgdoc-${crypto.randomUUID()}`;
 
   const metadata = JSON.stringify({
     name,

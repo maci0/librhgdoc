@@ -65,3 +65,15 @@ Audit of functionality in `templar` and `herald` evaluated for extraction into `
 | Layout configs / `LayoutConfig` | herald `src/layouts.ts` | Herald-specific Google Slides template architecture. |
 | `deleteDriveFiles` (herald's) | herald `index.ts` | Takes `OAuth2Client`, not raw token. Incompatible with librhgdoc's `deleteGoogleDriveFiles`. |
 | `detectMime` (templar `lib/images.ts`) | templar `lib/images.ts` | Returns `null` for unknown extensions (vs librhgdoc's `application/octet-stream`). Different error semantics in callers. |
+| `exportPdf` / `exportGoogleFile` | templar `lib/pdf.ts`, herald `index.ts` | Both do Drive `files.export` but with different auth types (`googleapis` client vs `OAuth2Client`). 5-line pattern not worth the auth abstraction. |
+| `RH_FONTS` constants | templar (203 occurrences) | Herald uses different code font (`Roboto Mono` vs `Red Hat Mono`). Self-documenting strings used inline in API request builders. Marginal value. |
+| `docUrl` / `googleSlidesUrl` | templar `templar.ts`, herald `index.ts` | One-liner URL interpolations. Extracting adds dependency overhead for zero logic. |
+| Structured logger | Both projects (ad-hoc `process.stderr.write`) | No shared pattern exists — each call is bespoke. Would be a new abstraction, not an extraction. |
+| File I/O wrappers | Both projects (raw `readFileSync`/`writeFileSync`) | Standard Node.js calls, no wrapper needed. |
+| Error classification | templar `templar.ts` | CLI-specific error-to-message mapping. Application-specific. |
+| OAuth scope constants | templar `scripts/templar-auth.ts`, herald `src/auth.ts` | Different scope sets for different APIs. Well-known Google URLs — repeating is clearer than importing. |
+| A4 page dimensions | templar `lib/docs-api.ts` | Only templar uses these (Docs page setup). Herald targets Slides (fixed 10"×5.625"). |
+
+## Round 3 scan result
+
+No new viable candidates found. The projects have been thoroughly picked clean of shared patterns. Remaining overlap is blocked by the `string` token vs `OAuth2Client` auth interface split, is application-specific, or is too trivial to justify library functions.

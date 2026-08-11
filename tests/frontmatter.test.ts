@@ -61,6 +61,16 @@ describe('parseFrontmatter', () => {
     const result = parseFrontmatter('gdoc-id: abc123');
     expect(result['gdoc-id']).toBe('abc123');
   });
+
+  test('parses mixed quoted/unquoted inline array', () => {
+    const result = parseFrontmatter('tags: ["a", b, "c"]');
+    expect(result.tags).toEqual(['a', 'b', 'c']);
+  });
+
+  test('parses inline array with all unquoted', () => {
+    const result = parseFrontmatter('items: [x, y, z]');
+    expect(result.items).toEqual(['x', 'y', 'z']);
+  });
 });
 
 describe('stringifyFrontmatter', () => {
@@ -98,6 +108,24 @@ describe('stringifyFrontmatter', () => {
   test('quotes boolean-like strings', () => {
     const out = stringifyFrontmatter({ flag: 'true' });
     expect(out).toContain('flag: "true"');
+  });
+
+  test('quotes boolean-like values in arrays', () => {
+    const out = stringifyFrontmatter({ tags: ['true', 'false', 'null'] });
+    expect(out).toContain('"true"');
+    expect(out).toContain('"false"');
+    expect(out).toContain('"null"');
+  });
+
+  test('quotes numeric-like values in arrays', () => {
+    const out = stringifyFrontmatter({ nums: ['42', '3.14'] });
+    expect(out).toContain('"42"');
+    expect(out).toContain('"3.14"');
+  });
+
+  test('quotes values in object arrays', () => {
+    const out = stringifyFrontmatter({ people: [{ name: 'true' }] });
+    expect(out).toContain('"true"');
   });
 });
 

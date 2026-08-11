@@ -68,6 +68,12 @@ describe('lintBrandNames', () => {
     const issues = lintBrandNames('Use openshift and kubernetes together.');
     expect(issues).toHaveLength(2);
   });
+
+  test('skips brand names inside tilde code fence', () => {
+    const text = '~~~\nRedhat\n~~~\nReal text';
+    const issues = lintBrandNames(text);
+    expect(issues).toHaveLength(0);
+  });
 });
 
 // ─── lintBareUrls ────────────────────────────────────────────────────────────
@@ -110,5 +116,16 @@ describe('lintBareUrls', () => {
 
   test('handles empty input', () => {
     expect(lintBareUrls('')).toEqual([]);
+  });
+
+  test('flags bare URL alongside markdown link', () => {
+    const issues = lintBareUrls('See [docs](https://a.com) and https://docs.example.com/path');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].level).toBe('warn');
+  });
+
+  test('does not flag line with only markdown link', () => {
+    const issues = lintBareUrls('See [docs](https://a.com)');
+    expect(issues).toHaveLength(0);
   });
 });

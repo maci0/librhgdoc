@@ -116,7 +116,7 @@ export function findImageRefs(markdown: string): ImageRef[] {
   let inCode = false;
 
   for (const line of lines) {
-    if (/^\s*```/.test(line)) { inCode = !inCode; continue; }
+    if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) { inCode = !inCode; continue; }
     if (inCode) continue;
 
     const re = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -186,7 +186,7 @@ export async function resolveImagePaths(
   let inCode = false;
 
   for (const line of lines) {
-    if (/^\s*```/.test(line)) { inCode = !inCode; outLines.push(line); continue; }
+    if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) { inCode = !inCode; outLines.push(line); continue; }
     if (inCode) { outLines.push(line); continue; }
 
     let result = line;

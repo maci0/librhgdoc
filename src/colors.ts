@@ -40,10 +40,17 @@ export const RH_COLORS = {
 /**
  * Convert a hex colour string to an {@link RgbColor}.
  *
- * Accepts `#RRGGBB` or `RRGGBB`.
+ * Accepts `#RRGGBB`, `RRGGBB`, `#RGB`, or `RGB`.
  */
 export function hexToRgb(hex: string): RgbColor {
-  const n = parseInt(hex.replace('#', ''), 16);
+  let h = hex.replace('#', '');
+  if (/^[0-9a-fA-F]{3}$/.test(h)) {
+    h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  }
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) {
+    return { red: 0, green: 0, blue: 0 };
+  }
+  const n = parseInt(h, 16);
   return {
     red:   ((n >> 16) & 0xff) / 255,
     green: ((n >>  8) & 0xff) / 255,
@@ -55,19 +62,13 @@ export function hexToRgb(hex: string): RgbColor {
  * Convert an {@link RgbColor} (0–1 floats) back to a `#RRGGBB` hex string.
  */
 export function rgbToHex(rgb: RgbColor): string {
-  const r = Math.round(rgb.red   * 255);
-  const g = Math.round(rgb.green * 255);
-  const b = Math.round(rgb.blue  * 255);
+  const clamp = (n: number) => Math.round(Math.max(0, Math.min(1, n)) * 255);
+  const r = clamp(rgb.red);
+  const g = clamp(rgb.green);
+  const b = clamp(rgb.blue);
   return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase();
 }
 
-/**
- * Check whether a hex colour is a shade of gray.
- *
- * Uses HSV saturation < 0.15 and weighted luminance between 0.15 and
- * 0.88, matching the heuristic from the Google-Apps-Script template
- * enforcer.  Accepts `#RRGGBB` format.
- */
 /** Normalize a hex color string: lowercase, ensure `#` prefix. */
 export function normHex(hex: string): string {
   if (!hex) return '';
@@ -80,13 +81,14 @@ export function normHex(hex: string): string {
  *
  * Uses HSV saturation < 0.15 and weighted luminance between 0.15 and
  * 0.88, matching the heuristic from the Google-Apps-Script template
- * enforcer.  Accepts `#RRGGBB` format.
+ * enforcer.  Accepts `#RRGGBB` or `RRGGBB` format.
  */
 export function isGrayHex(hex: string): boolean {
-  if (!hex || hex.length < 7) return false;
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const norm = hex.startsWith('#') ? hex : `#${hex}`;
+  if (norm.length < 7) return false;
+  const r = parseInt(norm.slice(1, 3), 16) / 255;
+  const g = parseInt(norm.slice(3, 5), 16) / 255;
+  const b = parseInt(norm.slice(5, 7), 16) / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const sat = max === 0 ? 0 : (max - min) / max;
