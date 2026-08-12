@@ -22,7 +22,7 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 
 **Gaps / Limitations:**
 - `hexToRgb` returns black `{0,0,0}` for invalid input — callers cannot distinguish "invalid" from "genuinely black" (no error/null path)
-- `isGrayHex` only accepts 6-digit hex — short 3-digit forms are rejected via `norm.length < 7` guard
+- ✅ ~~`isGrayHex` only accepts 6-digit hex~~ — now accepts both 3-digit and 6-digit hex forms
 - `normHex` accepts 8-digit (RRGGBBAA) hex but no other function consumes alpha; alpha is silently accepted and ignored
 
 ### Module: hash
@@ -143,7 +143,7 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 
 **Gaps / Limitations:**
 - `detectMimeType` returns `application/octet-stream` for unknown extensions — templar's local version returns `null` (different error semantics; intentionally kept separate)
-- `mimeToExtension` map is smaller than `detectMimeType`'s input map — not fully symmetric (e.g. `application/msword` detected but no reverse mapping)
+- ✅ ~~`mimeToExtension` map is smaller than `detectMimeType`'s~~ — now covers all MIME types from `detectMimeType` (fully symmetric)
 - `findImageRefs` uses a simple regex — cannot handle parentheses in URLs or multi-line image references
 - `resolveImagePaths` silently skips unreadable images (catch-all `try/catch`)
 - No image dimension detection or validation
@@ -171,14 +171,14 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 **Features:**
 - `tokenize(code, language?, colorMap?)` — syntax highlighting via highlight.js
 - `HIGHLIGHT_COLORS` — 31 light-theme CSS class→hex mappings
-- `DARK_HIGHLIGHT_COLORS` — 14 dark-theme mappings (subset; used by herald)
+- `DARK_HIGHLIGHT_COLORS` — 26 dark-theme mappings (used by herald)
 - `getSupportedLanguages()` — lists available highlight.js languages
 - `ColoredRun` / `HighlightResult` interfaces
 
 **Gaps / Limitations:**
 - highlight.js is an optional peer dep — `tokenize` falls back to a single unstyled run if missing
 - Uses `require('highlight.js')` (CJS) — may conflict in pure ESM environments
-- `DARK_HIGHLIGHT_COLORS` has only 14 entries vs light's 31 — uncovered tokens fall to `#24292e` (dark text on dark background — invisible)
+- ✅ ~~`DARK_HIGHLIGHT_COLORS` has only 14 entries~~ — now has 26 entries (up from 14), covering most highlight.js token classes
 - Different engine from templar's Shiki-based highlighting — different output format (`ColoredRun[]` vs `{start, end, color}`)
 - HTML entity decoder handles common entities but may miss rare ones
 - No line-number annotation or line-range highlighting
@@ -236,13 +236,13 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 ### Module: lint
 
 **Features:**
-- `lintBrandNames(text)` — checks 4 brand spelling patterns: `Redhat` → `Red Hat`, `OpenShift`, `Kubernetes`, `Ansible`
+- `lintBrandNames(text)` — checks 8 brand spelling patterns: `Red Hat`, `OpenShift`, `Kubernetes`, `Ansible`, `RHEL`, `Fedora`, `Podman`, `CentOS`
 - `lintBareUrls(text)` — flags bare URLs > 20 chars not wrapped in markdown link syntax
 - `LintMessage` / `LintLevel` types
 
 **Gaps / Limitations:**
 - Only 2 of templar's 20+ lint checks were extracted — the rest are too tightly coupled to templar's state machine
-- `lintBrandNames` only checks 4 brands — missing `RHEL`, `Fedora`, `CentOS`, `Podman`, etc.
+- ✅ ~~`lintBrandNames` only checks 4 brands~~ — now checks 8 brands (Red Hat, OpenShift, Kubernetes, Ansible, RHEL, Fedora, Podman, CentOS)
 - No column-level positions in `LintMessage` (only `line`)
 - `lintBareUrls` skips lines that are entirely a URL — may miss bare URLs in reference lists
 - 20-char threshold is hardcoded — short bare URLs like `http://x.co/abc` won't trigger
@@ -276,11 +276,10 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 
 **Features:**
 - Creates or updates a Google Doc from markdown
-- Flags: `--document`, `--template <id|url>`, `--force-new`, `--force-full`, `--open`, `--dry-run`, `--verbose`
+- Flags: `--document`, `--force-new`, `--force-full`, `--open`, `--dry-run`, `--verbose`
 - Incremental sync preserves existing Google Docs comments on unchanged blocks
 
 **Gaps:**
-- `--template <id|url>` is declared in help but **not implemented** — no code reads or applies an external template doc
 - `--dry-run` only shows pre-processed markdown stats, does not preview the final doc
 
 #### `templar watch <file.md> [--open]`
@@ -336,7 +335,7 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 - Detects and fixes style violations in an existing Google Doc against the Red Hat template spec (see Enforce Engine below)
 
 **Gaps:**
-- No `--dry-run` flag exposed at CLI level (the function supports `dryRun` internally)
+- ✅ ~~No `--dry-run` flag exposed at CLI level~~ — `--dry-run` is now supported
 - Only checks the first textRun in each paragraph — inline style variations within a paragraph are not audited
 
 #### `templar toc-restyle <doc-id|url>`
@@ -562,7 +561,7 @@ All other languages render as plain monospace text with no syntax colouring.
 
 **Gaps:**
 - No `--dry-run` mode
-- No `--open` flag to auto-open browser
+- ✅ ~~No `--open` flag~~ — `--open` is now supported to auto-open browser after conversion
 - No incremental sync — full slide content is replaced on every update (no diff-based partial updates like templar's `syncDoc`)
 
 #### `herald lint <deck.md> [--json] [--quiet]`
@@ -595,7 +594,7 @@ All other languages render as plain monospace text with no syntax colouring.
 #### `herald version`
 
 **Gaps:**
-- Hardcoded `0.1.0`, not read from `package.json`
+- ✅ ~~Hardcoded `0.1.0`~~ — version is now read dynamically from `package.json`
 
 ### Layout Support
 
@@ -728,7 +727,6 @@ Both projects use librhgdoc's `auth` module with credentials stored at `~/.confi
 | `enforce` command | Fix formatting in existing document |
 | `toc-restyle` command | Restyle Table of Contents |
 | `--dry-run` flag | Preview without API upload |
-| `--open` flag on convert | Auto-open browser after conversion |
 | `--force-full` flag | Force full rewrite (skip incremental) |
 | Incremental sync | Diff-based partial updates preserving doc comments |
 | Table of Contents | Generated with clickable heading links |
@@ -736,7 +734,6 @@ Both projects use librhgdoc's `auth` module with credentials stored at `~/.confi
 | File uploads | Arbitrary non-image file attachments to Google Drive |
 | GCS integration | Cloud storage fallback for image hosting |
 | Shiki syntax highlighting | 14 languages with precise token colouring |
-| `--template` flag (declared) | In help string but unimplemented |
 
 ### What herald has that templar doesn't
 

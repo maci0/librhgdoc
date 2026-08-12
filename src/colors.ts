@@ -85,7 +85,10 @@ export function normHex(hex: string): string {
  * enforcer.  Accepts `#RRGGBB` or `RRGGBB` format.
  */
 export function isGrayHex(hex: string): boolean {
-  const norm = hex.startsWith('#') ? hex : `#${hex}`;
+  let norm = hex.startsWith('#') ? hex : `#${hex}`;
+  if (norm.length === 4) {
+    norm = `#${norm[1]}${norm[1]}${norm[2]}${norm[2]}${norm[3]}${norm[3]}`;
+  }
   if (norm.length < 7) return false;
   const r = parseInt(norm.slice(1, 3), 16) / 255;
   const g = parseInt(norm.slice(3, 5), 16) / 255;

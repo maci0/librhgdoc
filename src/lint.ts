@@ -24,6 +24,10 @@ const BRAND_PATTERNS: Array<[RegExp, string]> = [
   [/(?<![/:.`\-_@])\bOpenShift\b(?![/:.`\-_])/gi,   'OpenShift'],
   [/(?<![/:.`\-_@])\bKubernetes\b(?![/:.`\-_])/gi,  'Kubernetes'],
   [/(?<![/:.`\-_@])\bAnsible\b(?![/:.`\-_])/gi,     'Ansible'],
+  [/(?<![/:.`\-_@])\bRHEL\b(?![/:.`\-_])/gi,       'RHEL'],
+  [/(?<![/:.`\-_@])\bFedora\b(?![/:.`\-_])/gi,     'Fedora'],
+  [/(?<![/:.`\-_@])\bPodman\b(?![/:.`\-_])/gi,     'Podman'],
+  [/(?<![/:.`\-_@])\bCentOS\b(?![/:.`\-_])/gi,     'CentOS'],
 ];
 
 /** Check if a string contains common Red Hat brand name misspellings.

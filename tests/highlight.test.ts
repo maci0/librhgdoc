@@ -174,6 +174,37 @@ describe('DARK_HIGHLIGHT_COLORS', () => {
     expect(DARK_HIGHLIGHT_COLORS['hljs-number']).toBeDefined();
   });
 
+  test('has entries for extended token types', () => {
+    expect(DARK_HIGHLIGHT_COLORS['hljs-built_in']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-literal']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-title']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-name']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-variable']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-template-variable']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-type']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-class']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-symbol']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-regexp']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-addition']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-deletion']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-selector-class']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-selector-id']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-selector-tag']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-tag']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-template-tag']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-bullet']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-link']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-doctag']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-section']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-attr']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-attribute']).toBeDefined();
+    expect(DARK_HIGHLIGHT_COLORS['hljs-meta']).toBeDefined();
+  });
+
+  test('has at least 26 entries', () => {
+    expect(Object.keys(DARK_HIGHLIGHT_COLORS).length).toBeGreaterThanOrEqual(26);
+  });
+
   test('all values are hex colour strings', () => {
     for (const [, value] of Object.entries(DARK_HIGHLIGHT_COLORS)) {
       expect(value).toMatch(/^#[0-9a-fA-F]{6}$/);

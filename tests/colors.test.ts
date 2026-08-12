@@ -117,6 +117,30 @@ describe('isGrayHex', () => {
   test('detects gray without # prefix', () => {
     expect(isGrayHex('808080')).toBe(true);
   });
+
+  test('accepts 3-digit gray #999', () => {
+    expect(isGrayHex('#999')).toBe(true);
+  });
+
+  test('rejects 3-digit white #fff (luminance too high)', () => {
+    expect(isGrayHex('#fff')).toBe(false);
+  });
+
+  test('rejects 3-digit red #f00 (not gray)', () => {
+    expect(isGrayHex('#f00')).toBe(false);
+  });
+
+  test('rejects 3-digit #123 (not gray)', () => {
+    expect(isGrayHex('#123')).toBe(false);
+  });
+
+  test('accepts 3-digit #777 (mid-gray)', () => {
+    expect(isGrayHex('#777')).toBe(true);
+  });
+
+  test('accepts 3-digit gray without # prefix', () => {
+    expect(isGrayHex('999')).toBe(true);
+  });
 });
 
 describe('RH_COLORS', () => {

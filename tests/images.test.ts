@@ -110,6 +110,98 @@ describe('mimeToExtension', () => {
   test('is case-insensitive', () => {
     expect(mimeToExtension('IMAGE/PNG')).toBe('.png');
   });
+
+  test('returns .webp for image/webp', () => {
+    expect(mimeToExtension('image/webp')).toBe('.webp');
+  });
+
+  test('returns .bmp for image/bmp', () => {
+    expect(mimeToExtension('image/bmp')).toBe('.bmp');
+  });
+
+  test('returns .tiff for image/tiff', () => {
+    expect(mimeToExtension('image/tiff')).toBe('.tiff');
+  });
+
+  test('returns .ico for image/x-icon', () => {
+    expect(mimeToExtension('image/x-icon')).toBe('.ico');
+  });
+
+  test('returns .zip for application/zip', () => {
+    expect(mimeToExtension('application/zip')).toBe('.zip');
+  });
+
+  test('returns .txt for text/plain', () => {
+    expect(mimeToExtension('text/plain')).toBe('.txt');
+  });
+
+  test('returns .html for text/html', () => {
+    expect(mimeToExtension('text/html')).toBe('.html');
+  });
+
+  test('returns .md for text/markdown', () => {
+    expect(mimeToExtension('text/markdown')).toBe('.md');
+  });
+
+  test('returns .json for application/json', () => {
+    expect(mimeToExtension('application/json')).toBe('.json');
+  });
+
+  test('returns .xml for application/xml', () => {
+    expect(mimeToExtension('application/xml')).toBe('.xml');
+  });
+
+  test('returns .csv for text/csv', () => {
+    expect(mimeToExtension('text/csv')).toBe('.csv');
+  });
+
+  test('returns .doc for application/msword', () => {
+    expect(mimeToExtension('application/msword')).toBe('.doc');
+  });
+
+  test('returns .docx for wordprocessingml MIME', () => {
+    expect(mimeToExtension('application/vnd.openxmlformats-officedocument.wordprocessingml.document')).toBe('.docx');
+  });
+
+  test('returns .xls for application/vnd.ms-excel', () => {
+    expect(mimeToExtension('application/vnd.ms-excel')).toBe('.xls');
+  });
+
+  test('returns .xlsx for spreadsheetml MIME', () => {
+    expect(mimeToExtension('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe('.xlsx');
+  });
+
+  test('returns .ppt for application/vnd.ms-powerpoint', () => {
+    expect(mimeToExtension('application/vnd.ms-powerpoint')).toBe('.ppt');
+  });
+
+  test('returns .pptx for presentationml MIME', () => {
+    expect(mimeToExtension('application/vnd.openxmlformats-officedocument.presentationml.presentation')).toBe('.pptx');
+  });
+
+  test('returns .gz for application/gzip', () => {
+    expect(mimeToExtension('application/gzip')).toBe('.gz');
+  });
+
+  test('returns .tar for application/x-tar', () => {
+    expect(mimeToExtension('application/x-tar')).toBe('.tar');
+  });
+
+  test('returns .yaml for text/yaml', () => {
+    expect(mimeToExtension('text/yaml')).toBe('.yaml');
+  });
+
+  test('returns .odt for OpenDocument text', () => {
+    expect(mimeToExtension('application/vnd.oasis.opendocument.text')).toBe('.odt');
+  });
+
+  test('returns .ods for OpenDocument spreadsheet', () => {
+    expect(mimeToExtension('application/vnd.oasis.opendocument.spreadsheet')).toBe('.ods');
+  });
+
+  test('returns .odp for OpenDocument presentation', () => {
+    expect(mimeToExtension('application/vnd.oasis.opendocument.presentation')).toBe('.odp');
+  });
 });
 
 // ─── isLocalPath ──────────────────────────────────────────────────────────────

@@ -92,6 +92,18 @@ export const DARK_HIGHLIGHT_COLORS: Record<string, string> = {
   'hljs-template-variable': '#fce3e3',
   'hljs-type':              '#daf1f1',
   'hljs-class':             '#daf1f1',
+  'hljs-symbol':            '#d4a8ff',
+  'hljs-deletion':          '#ff9d9d',
+  'hljs-addition':          '#a8ffc4',
+  'hljs-link':              '#a8d4ff',
+  'hljs-selector-id':       '#a8d4ff',
+  'hljs-selector-class':    '#ffd4a8',
+  'hljs-tag':               '#ff9d9d',
+  'hljs-template-tag':      '#d4a8ff',
+  'hljs-regexp':            '#a8ffc4',
+  'hljs-doctag':            '#a8d4ff',
+  'hljs-section':           '#ffffff',
+  'hljs-bullet':            '#daf1f1',
 };
 
 /** Default text colour when no token-specific colour applies. */

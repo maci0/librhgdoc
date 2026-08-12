@@ -79,6 +79,71 @@ describe('lintBrandNames', () => {
     const issues = lintBrandNames('Use `openshift` as a value.');
     expect(issues).toHaveLength(0);
   });
+
+  test('detects "Rhel" misspelling → RHEL', () => {
+    const issues = lintBrandNames('Install Rhel on bare metal.');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].msg).toContain('RHEL');
+  });
+
+  test('accepts correct "RHEL" spelling', () => {
+    const issues = lintBrandNames('Install RHEL on bare metal.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('detects "fedora" case mismatch → Fedora', () => {
+    const issues = lintBrandNames('Run fedora workstation.');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].msg).toContain('Fedora');
+  });
+
+  test('accepts correct "Fedora" spelling', () => {
+    const issues = lintBrandNames('Run Fedora workstation.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('detects "podman" case mismatch → Podman', () => {
+    const issues = lintBrandNames('Use podman for containers.');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].msg).toContain('Podman');
+  });
+
+  test('accepts correct "Podman" spelling', () => {
+    const issues = lintBrandNames('Use Podman for containers.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('detects "Centos" misspelling → CentOS', () => {
+    const issues = lintBrandNames('Upgrade from Centos to RHEL.');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].msg).toContain('CentOS');
+  });
+
+  test('detects "centos" misspelling → CentOS', () => {
+    const issues = lintBrandNames('Upgrade from centos to RHEL.');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].msg).toContain('CentOS');
+  });
+
+  test('accepts correct "CentOS" spelling', () => {
+    const issues = lintBrandNames('Upgrade from CentOS to RHEL.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('does not flag /fedora in path context', () => {
+    const issues = lintBrandNames('See /fedora/release for info.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('does not flag .podman in file-extension context', () => {
+    const issues = lintBrandNames('Edit the .podman config file.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('does not flag fedora after colon', () => {
+    const issues = lintBrandNames('registry:fedora is a valid tag.');
+    expect(issues).toHaveLength(0);
+  });
 });
 
 // ─── lintBareUrls ────────────────────────────────────────────────────────────

@@ -77,6 +77,18 @@ export function mimeToExtension(mime: string): string {
     'application/json': '.json',
     'application/xml': '.xml',
     'text/csv': '.csv',
+    'application/msword': '.doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+    'application/vnd.ms-excel': '.xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+    'application/vnd.ms-powerpoint': '.ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+    'application/gzip': '.gz',
+    'application/x-tar': '.tar',
+    'text/yaml': '.yaml',
+    'application/vnd.oasis.opendocument.text': '.odt',
+    'application/vnd.oasis.opendocument.spreadsheet': '.ods',
+    'application/vnd.oasis.opendocument.presentation': '.odp',
   };
   return map[mime.toLowerCase()] ?? '.bin';
 }
