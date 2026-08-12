@@ -100,4 +100,10 @@ export {
   type LintMessage,
   lintBrandNames,
   lintBareUrls,
+  lintUnclosedCodeFence,
+  lintCodeBlockLanguage,
+  lintEmDash,
+  lintPlaceholderText,
+  lintEmptyImageAlt,
+  lintLongCodeBlock,
 } from './lint.ts';
