@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { fmtTime, parsePresenterEntry, type PresenterEntry } from '../src/cli.ts';
+import { fmtTime, parsePresenterEntry, formatGoogleApiError, type PresenterEntry } from '../src/cli.ts';
 
 // ─── fmtTime ─────────────────────────────────────────────────────────────────
 
@@ -100,5 +100,34 @@ describe('parsePresenterEntry', () => {
   test('trims whitespace', () => {
     const result = parsePresenterEntry('  John Doe  ');
     expect(result).toEqual({ name: 'John Doe' });
+  });
+});
+
+
+// ─── formatGoogleApiError ───────────────────────────────────────────────────
+
+describe('formatGoogleApiError', () => {
+  test('maps permission denied', () => {
+    expect(formatGoogleApiError('The caller does not have permission')).toContain('Permission denied');
+  });
+
+  test('maps quota exceeded', () => {
+    expect(formatGoogleApiError('Quota exceeded for quota metric')).toContain('quota exceeded');
+  });
+
+  test('maps 404', () => {
+    expect(formatGoogleApiError('File not found: abc123')).toContain('not found');
+  });
+
+  test('maps expired token', () => {
+    expect(formatGoogleApiError('Token has been expired or revoked')).toContain('expired');
+  });
+
+  test('maps insufficient scopes', () => {
+    expect(formatGoogleApiError('Insufficient authentication scopes')).toContain('scopes');
+  });
+
+  test('returns null for unknown errors', () => {
+    expect(formatGoogleApiError('Some random error')).toBeNull();
   });
 });

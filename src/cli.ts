@@ -65,3 +65,29 @@ export function parsePresenterEntry(entry: string | Record<string, string>): Pre
 
   return { name: trimmed };
 }
+
+/**
+ * Map common Google API error messages to user-friendly suggestions.
+ * Returns a helpful message if the error matches a known pattern, or null if unrecognized.
+ */
+export function formatGoogleApiError(errorMessage: string): string | null {
+  const msg = errorMessage.toLowerCase();
+
+  if (msg.includes('the caller does not have permission') || msg.includes('permission denied')) {
+    return 'Permission denied. Check that the document is shared with your account, or re-authenticate.';
+  }
+  if (msg.includes('quota exceeded') || msg.includes('rate limit')) {
+    return 'Google API quota exceeded. Wait a minute and try again.';
+  }
+  if (msg.includes('404') || msg.includes('file not found') || msg.includes('not found')) {
+    return 'Document not found. Check the document ID or URL.';
+  }
+  if (msg.includes('invalid_grant') || msg.includes('token has been expired')) {
+    return 'Authentication expired. Re-run the auth flow.';
+  }
+  if (msg.includes('insufficient authentication scopes')) {
+    return 'Missing API scopes. Re-run the auth flow to grant additional permissions.';
+  }
+
+  return null;
+}
