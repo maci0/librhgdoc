@@ -87,7 +87,7 @@ export {
   tokenize,
   getSupportedLanguages,
 } from './highlight.ts';
-export { fmtTime, type PresenterEntry, parsePresenterEntry, formatGoogleApiError } from './cli.ts';
+export { fmtTime, type PresenterEntry, parsePresenterEntry, formatGoogleApiError, openGoogleUrl } from './cli.ts';
 export { sparseMap } from './collections.ts';
 export { type ColumnWidthOptions, calcColumnWidths } from './tables.ts';
 export {

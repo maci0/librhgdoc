@@ -70,6 +70,38 @@ export function parsePresenterEntry(entry: string | Record<string, string>): Pre
 }
 
 /**
+ * Open a Google Docs or Google Drive HTTPS URL in the default browser.
+ *
+ * Validates that the URL is HTTPS and hosted on docs.google.com or
+ * drive.google.com before spawning. Refuses invalid or non-Google URLs.
+ * Cross-platform: `open` on macOS, `xdg-open` on Linux, `start` on Windows.
+ */
+export function openGoogleUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    process.stderr.write(`[open] Refusing to open invalid URL\n`);
+    return;
+  }
+  const host = parsed.hostname.toLowerCase();
+  const okHost = host === 'docs.google.com' || host === 'drive.google.com';
+  if (parsed.protocol !== 'https:' || !okHost) {
+    process.stderr.write(`[open] Refusing to open non-Google URL: ${parsed.origin}\n`);
+    return;
+  }
+  // `--` stops option parsing so a URL starting with `-` cannot inject flags.
+  // On Windows, `start` is a cmd builtin; the empty title arg avoids the
+  // "first quoted arg is window title" quirk when the target is a URL.
+  if (process.platform === 'win32') {
+    Bun.spawn(['cmd', '/c', 'start', '', url]);
+  } else {
+    const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
+    Bun.spawn([cmd, '--', url]);
+  }
+}
+
+/**
  * Map common Google API error messages to user-friendly suggestions.
  * Returns a helpful message if the error matches a known pattern, or null if unrecognized.
  */

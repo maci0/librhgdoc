@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { fmtTime, parsePresenterEntry, formatGoogleApiError, type PresenterEntry } from '../src/cli.ts';
+import { fmtTime, parsePresenterEntry, formatGoogleApiError, openGoogleUrl, type PresenterEntry } from '../src/cli.ts';
 
 // ─── fmtTime ─────────────────────────────────────────────────────────────────
 
@@ -192,5 +192,47 @@ describe('formatGoogleApiError', () => {
 
   test('returns null for empty string', () => {
     expect(formatGoogleApiError('')).toBeNull();
+  });
+});
+
+// ─── openGoogleUrl ────────────────────────────────────────────────────────────
+
+describe('openGoogleUrl', () => {
+  function captureStderr(fn: () => void): string {
+    const msgs: string[] = [];
+    const orig = process.stderr.write.bind(process.stderr);
+    (process.stderr as any).write = (s: any) => { msgs.push(String(s)); return true; };
+    try { fn(); } finally { (process.stderr as any).write = orig; }
+    return msgs.join('');
+  }
+
+  test('rejects invalid URL', () => {
+    const err = captureStderr(() => openGoogleUrl('not a url at all'));
+    expect(err).toContain('invalid URL');
+  });
+
+  test('rejects non-HTTPS Google URL', () => {
+    const err = captureStderr(() => openGoogleUrl('http://docs.google.com/document/d/abc/edit'));
+    expect(err).toContain('Refusing');
+  });
+
+  test('rejects non-Google HTTPS URL', () => {
+    const err = captureStderr(() => openGoogleUrl('https://example.com/malicious'));
+    expect(err).toContain('Refusing');
+  });
+
+  test('rejects slides.google.com (not in allowlist)', () => {
+    const err = captureStderr(() => openGoogleUrl('https://slides.google.com/somepath'));
+    expect(err).toContain('Refusing');
+  });
+
+  test('accepts docs.google.com URL without writing to stderr', () => {
+    const err = captureStderr(() => openGoogleUrl('https://docs.google.com/presentation/d/abc/edit'));
+    expect(err).toBe('');
+  });
+
+  test('accepts drive.google.com URL without writing to stderr', () => {
+    const err = captureStderr(() => openGoogleUrl('https://drive.google.com/drive/folders/xyz'));
+    expect(err).toBe('');
   });
 });
