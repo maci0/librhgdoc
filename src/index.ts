@@ -40,6 +40,7 @@ export {
   type BatchUpdateRequest,
   type BatchUpdateResponse,
   batchUpdate,
+  withGoogleRetry,
   pt,
   emu,
   rgbColor,

@@ -8,6 +8,7 @@ import {
   optionalColor,
   toEmu,
   batchUpdate,
+  withGoogleRetry,
   EMU_PER_PX,
   SLIDE_W_PX,
   SLIDE_H_PX,
@@ -354,5 +355,86 @@ describe('extractGoogleId', () => {
 
   test('returns null for URL with too-short ID', () => {
     expect(extractGoogleId('https://example.com/d/abc')).toBe(null);
+  });
+});
+
+// ─── withGoogleRetry ──────────────────────────────────────────────────────────
+
+function makeHttpError(status: number): Error {
+  const e = new Error(`HTTP ${status}`) as any;
+  e.response = { status };
+  return e;
+}
+
+function makeFetchError(status: number): Error {
+  const e = new Error(`HTTP ${status}`) as any;
+  e.status = status;
+  return e;
+}
+
+describe('withGoogleRetry', () => {
+  test('returns result on immediate success', async () => {
+    const result = await withGoogleRetry('op', () => Promise.resolve(42));
+    expect(result).toBe(42);
+  });
+
+  test('retries on 429 and succeeds', async () => {
+    let calls = 0;
+    const result = await withGoogleRetry('op', async () => {
+      calls++;
+      if (calls < 3) throw makeHttpError(429);
+      return 'ok';
+    });
+    expect(result).toBe('ok');
+    expect(calls).toBe(3);
+  });
+
+  test('retries on 503 and succeeds', async () => {
+    let calls = 0;
+    const result = await withGoogleRetry('op', async () => {
+      calls++;
+      if (calls < 2) throw makeHttpError(503);
+      return 'done';
+    });
+    expect(result).toBe('done');
+    expect(calls).toBe(2);
+  });
+
+  test('handles fetch-style error shape (e.status not e.response.status)', async () => {
+    let calls = 0;
+    const result = await withGoogleRetry('op', async () => {
+      calls++;
+      if (calls < 2) throw makeFetchError(429);
+      return 'fetched';
+    });
+    expect(result).toBe('fetched');
+    expect(calls).toBe(2);
+  });
+
+  test('throws immediately on non-retryable error (404)', async () => {
+    let calls = 0;
+    await expect(withGoogleRetry('op', async () => {
+      calls++;
+      throw makeHttpError(404);
+    })).rejects.toThrow('HTTP 404');
+    expect(calls).toBe(1);
+  });
+
+  test('throws after maxAttempts exhausted', async () => {
+    let calls = 0;
+    await expect(withGoogleRetry('op', async () => {
+      calls++;
+      throw makeHttpError(429);
+    }, 3)).rejects.toThrow('HTTP 429');
+    expect(calls).toBe(3);
+  });
+
+  test('throws immediately on non-HTTP error', async () => {
+    let calls = 0;
+    await expect(withGoogleRetry('op', async () => {
+      calls++;
+      throw new Error('network failure');
+    })).rejects.toThrow('network failure');
+    expect(calls).toBe(1);
   });
 });

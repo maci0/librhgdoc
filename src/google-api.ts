@@ -8,6 +8,48 @@
 
 import type { RgbColor } from './colors.ts';
 
+// ─── Retry ───────────────────────────────────────────────────────────────────
+
+interface HttpErr {
+  response?: { status?: number };
+  status?: number;
+}
+
+function httpStatus(err: unknown): number | undefined {
+  const e = err as HttpErr;
+  return e.response?.status ?? e.status;
+}
+
+/**
+ * Retry a Google API call on transient failures (429/500/502/503) with
+ * exponential backoff and jitter.
+ *
+ * @param op          — Label used in the retry log line (e.g. `"[herald] batchUpdate"`).
+ * @param fn          — Async operation to execute.
+ * @param maxAttempts — Total attempts before giving up (default 3).
+ */
+export async function withGoogleRetry<T>(
+  op: string,
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const status = httpStatus(e);
+      const retryable = status === 429 || status === 500 || status === 502 || status === 503;
+      if (!retryable || attempt === maxAttempts - 1) throw e;
+      const delay = Math.min(1000 * 2 ** attempt, 8000) + Math.floor(Math.random() * 250);
+      process.stderr.write(`${op}: HTTP ${status}, retry ${attempt + 1}/${maxAttempts - 1} in ${delay}ms\n`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
 /** A single request object in a Google API batch update. */
