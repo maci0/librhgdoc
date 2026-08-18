@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { calcColumnWidths, type ColumnWidthOptions } from '../src/tables.ts';
+import { calcColumnWidths } from '../src/tables.ts';
 
 describe('calcColumnWidths', () => {
   const simpleTable = [
@@ -7,6 +7,19 @@ describe('calcColumnWidths', () => {
     '|------|-----|------|',
     '| Alice | 30 | New York |',
     '| Bob | 25 | San Francisco |',
+  ].join('\n');
+
+  const wideTable = [
+    '| ID | Name | Description | Category | Notes |',
+    '|---|---|---|---|---|',
+    '| 1 | Widget | A small widget | Tools | Good |',
+    '| 2 | Gadget | A fancy gadget | Electronics | Great |',
+  ].join('\n');
+
+  const sevenColTable = [
+    '| A | B | C | D | E | F | G |',
+    '|---|---|---|---|---|---|---|',
+    '| 1 | 2 | 3 | 4 | 5 | 6 | 7 |',
   ].join('\n');
 
   test('returns widths for a basic table', () => {
@@ -91,36 +104,14 @@ describe('calcColumnWidths', () => {
     expect(widths.reduce((a, b) => a + b, 0)).toBe(468);
   });
 
-  test('column widths sum equals page width for simple table', () => {
-    const sum = calcColumnWidths(simpleTable).reduce((a, b) => a + b, 0);
-    expect(Math.abs(sum - 468)).toBeLessThanOrEqual(1);
-  });
-
-  test('column widths sum equals page width for wide table', () => {
-    const wideTable = [
-      '| ID | Name | Description | Category | Notes |',
-      '|---|---|---|---|---|',
-      '| 1 | Widget | A small widget | Tools | Good |',
-      '| 2 | Gadget | A fancy gadget | Electronics | Great |',
-    ].join('\n');
-    const sum = calcColumnWidths(wideTable).reduce((a, b) => a + b, 0);
-    expect(Math.abs(sum - 468)).toBeLessThanOrEqual(1);
-  });
-
-  test('header-only table sum equals page width exactly', () => {
-    const headerOnly = '| A | B | C |\n|---|---|---|';
-    const widths = calcColumnWidths(headerOnly);
-    expect(widths.reduce((a, b) => a + b, 0)).toBe(468);
-  });
-
-  test('7-column table sum equals page width exactly', () => {
-    const table = [
-      '| A | B | C | D | E | F | G |',
-      '|---|---|---|---|---|---|---|',
-      '| 1 | 2 | 3 | 4 | 5 | 6 | 7 |',
-    ].join('\n');
+  test.each([
+    ['simple table', simpleTable, 3],
+    ['wide table', wideTable, 5],
+    ['header-only table', '| A | B | C |\n|---|---|---|', 3],
+    ['7-column table', sevenColTable, 7],
+  ])('column widths sum to page width for %s', (_label, table, cols) => {
     const widths = calcColumnWidths(table);
-    expect(widths).toHaveLength(7);
+    expect(widths).toHaveLength(cols);
     expect(widths.reduce((a, b) => a + b, 0)).toBe(468);
   });
 });

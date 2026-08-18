@@ -28,8 +28,20 @@ describe('fmtTime', () => {
     expect(fmtTime(2300)).toBe('2.3s');
   });
 
-  test('formats large durations', () => {
-    expect(fmtTime(65000)).toBe('65.0s');
+  test('formats sub-minute large durations in seconds', () => {
+    expect(fmtTime(45000)).toBe('45.0s');
+  });
+
+  test('formats exactly 60000ms as minutes', () => {
+    expect(fmtTime(60000)).toBe('1.0m');
+  });
+
+  test('formats multi-minute durations', () => {
+    expect(fmtTime(150000)).toBe('2.5m');
+  });
+
+  test('formats large durations in minutes', () => {
+    expect(fmtTime(360000)).toBe('6.0m');
   });
 
   test('formats 1500ms', () => {
@@ -129,5 +141,56 @@ describe('formatGoogleApiError', () => {
 
   test('returns null for unknown errors', () => {
     expect(formatGoogleApiError('Some random error')).toBeNull();
+  });
+
+  // alternate branch keywords
+  test('maps "permission denied" keyword', () => {
+    expect(formatGoogleApiError('permission denied on resource')).toContain('Permission denied');
+  });
+
+  test('maps "rate limit" keyword', () => {
+    expect(formatGoogleApiError('rate limit exceeded, retry later')).toContain('quota exceeded');
+  });
+
+  test('maps bare "404" keyword', () => {
+    expect(formatGoogleApiError('Error 404 while fetching doc')).toContain('not found');
+  });
+
+  test('maps generic "not found" keyword', () => {
+    expect(formatGoogleApiError('Resource not found in API')).toContain('not found');
+  });
+
+  test('maps "invalid_grant" keyword', () => {
+    expect(formatGoogleApiError('Error: invalid_grant')).toContain('expired');
+  });
+
+  // case sensitivity — function lowercases before matching
+  test('matches case-insensitively (uppercase input)', () => {
+    expect(formatGoogleApiError('THE CALLER DOES NOT HAVE PERMISSION')).toContain('Permission denied');
+  });
+
+  test('matches case-insensitively (mixed case quota)', () => {
+    expect(formatGoogleApiError('QUOTA EXCEEDED for project')).toContain('quota exceeded');
+  });
+
+  test('matches case-insensitively (mixed case scopes)', () => {
+    expect(formatGoogleApiError('INSUFFICIENT AUTHENTICATION SCOPES')).toContain('scopes');
+  });
+
+  // partial matches — error substring embedded in a longer message
+  test('matches permission error embedded in longer message', () => {
+    expect(formatGoogleApiError('Google API returned: the caller does not have permission to access this')).toContain('Permission denied');
+  });
+
+  test('matches not-found embedded in a verbose error', () => {
+    expect(formatGoogleApiError('HttpError: file not found, please check doc id')).toContain('not found');
+  });
+
+  test('returns null for completely unrelated message', () => {
+    expect(formatGoogleApiError('connection timeout after 30s')).toBeNull();
+  });
+
+  test('returns null for empty string', () => {
+    expect(formatGoogleApiError('')).toBeNull();
   });
 });

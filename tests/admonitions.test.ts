@@ -5,6 +5,7 @@ import {
   ADMONITION_LABELS,
   ADMONITION_ACCENT,
   ADMONITION_BG,
+  isAdmonitionType,
 } from '../src/admonitions.ts';
 
 describe('ADMONITION_TYPES', () => {
@@ -21,8 +22,8 @@ describe('ADMONITION_TYPES', () => {
   });
 
   test('rejects invalid types', () => {
-    expect(ADMONITION_TYPES.has('DANGER')).toBe(false);
-    expect(ADMONITION_TYPES.has('note')).toBe(false);
+    expect(isAdmonitionType('DANGER')).toBe(false);
+    expect(isAdmonitionType('note')).toBe(false);
   });
 });
 
@@ -100,5 +101,22 @@ describe('ADMONITION_BG', () => {
       const bgLum = bg.red * 0.299 + bg.green * 0.587 + bg.blue * 0.114;
       expect(bgLum).toBeGreaterThan(accentLum);
     }
+  });
+});
+
+describe('isAdmonitionType', () => {
+  test('returns true for valid admonition types', () => {
+    expect(isAdmonitionType('NOTE')).toBe(true);
+    expect(isAdmonitionType('TIP')).toBe(true);
+    expect(isAdmonitionType('IMPORTANT')).toBe(true);
+    expect(isAdmonitionType('WARNING')).toBe(true);
+    expect(isAdmonitionType('CAUTION')).toBe(true);
+  });
+
+  test('returns false for invalid strings', () => {
+    expect(isAdmonitionType('DANGER')).toBe(false);
+    expect(isAdmonitionType('note')).toBe(false);
+    expect(isAdmonitionType('')).toBe(false);
+    expect(isAdmonitionType('INFO')).toBe(false);
   });
 });

@@ -18,16 +18,26 @@
  *
  * @param text - The raw YAML text (without `---` delimiters).
  */
-export function parseFrontmatter(text: string): Record<string, string | string[] | Record<string, string>[]> {
-  const data: Record<string, any> = {};
+export function parseFrontmatter(text: string): Record<string, string | (string | Record<string, string>)[]> {
+  const data: Record<string, string | (string | Record<string, string>)[]> = {};
   if (!text || !text.trim()) return data;
   const lines = text.split(/\r?\n/);
   let i = 0;
 
   const parseScalar = (value: string): string => {
     const trimmed = value.trim();
-    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      return trimmed.slice(1, -1).replace(/\\(["\\nr])/g, (_, ch) => {
+        switch (ch) {
+          case '"':  return '"';
+          case '\\': return '\\';
+          case 'n':  return '\n';
+          case 'r':  return '\r';
+          default:   return `\\${ch}`;
+        }
+      });
+    }
+    if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
       return trimmed.slice(1, -1);
     }
     return trimmed;
@@ -50,7 +60,7 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
 
     // ── Block sequence (bare `key:` followed by `- item` lines) ──
     if (val === '') {
-      const items: any[] = [];
+      const items: (string | Record<string, string>)[] = [];
       i++;
       while (i < lines.length) {
         const rawNext = lines[i];
@@ -79,10 +89,10 @@ export function parseFrontmatter(text: string): Record<string, string | string[]
             items.push(parseScalar(itemValue));
             i++;
           }
-        } else if (rawNext.trim() === '' || rawNext.match(/^\s/)) {
-          i++;
+        } else if (rawNext.trim() === '') {
+          i++; // skip blank lines between items
         } else {
-          break;
+          break; // non-item line ends the sequence
         }
       }
       if (items.length) data[key] = items;
@@ -143,11 +153,18 @@ export function stringifyFrontmatter(data: Record<string, unknown>): string {
       /^[\[{'"#>|]/.test(s) ||
       s.includes(': ') ||
       s.includes(' #') ||
+      s.includes('"') ||
+      s.includes("'") ||
+      s.includes('\n') ||
+      s.includes('\r') ||
+      s.includes('\\') ||
       /^(true|false|null|~|yes|no|on|off)$/i.test(s) ||
       /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(s) ||
       /^\d{4}-\d{2}-\d{2}/.test(s) ||
       /^[+-]?(\.\d+|\.inf|\.nan)$/i.test(s);
-    return needsQuote ? `"${s.replace(/"/g, '\\"')}"` : s;
+    return needsQuote
+      ? `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`
+      : s;
   };
 
   let out = '';

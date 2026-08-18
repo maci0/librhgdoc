@@ -34,173 +34,69 @@ describe('IMAGE_EXTENSIONS', () => {
 // ─── detectMimeType ─────────────────────────────────────────────────────────
 
 describe('detectMimeType', () => {
-  test('returns image/png for .png', () => {
-    expect(detectMimeType('photo.png')).toBe('image/png');
+  test.each([
+    ['photo.png',    'image/png'],
+    ['photo.jpg',    'image/jpeg'],
+    ['photo.jpeg',   'image/jpeg'],
+    ['anim.gif',     'image/gif'],
+    ['icon.svg',     'image/svg+xml'],
+    ['image.webp',   'image/webp'],
+    ['bitmap.bmp',   'image/bmp'],
+    ['scan.tiff',    'image/tiff'],
+    ['scan.tif',     'image/tiff'],
+    ['favicon.ico',  'image/x-icon'],
+    ['file.xyz',     'application/octet-stream'],
+    ['PHOTO.PNG',    'image/png'],
+    ['image.JPG',    'image/jpeg'],
+  ])('detectMimeType(%s) → %s', (file, mime) => {
+    expect(detectMimeType(file)).toBe(mime);
   });
 
-  test('returns image/jpeg for .jpg', () => {
-    expect(detectMimeType('photo.jpg')).toBe('image/jpeg');
+  test('returns custom fallback for unknown extension', () => {
+    expect(detectMimeType('file.xyz', 'image/png')).toBe('image/png');
   });
 
-  test('returns image/jpeg for .jpeg', () => {
-    expect(detectMimeType('photo.jpeg')).toBe('image/jpeg');
-  });
-
-  test('returns image/gif for .gif', () => {
-    expect(detectMimeType('anim.gif')).toBe('image/gif');
-  });
-
-  test('returns image/svg+xml for .svg', () => {
-    expect(detectMimeType('icon.svg')).toBe('image/svg+xml');
-  });
-
-  test('returns image/webp for .webp', () => {
-    expect(detectMimeType('image.webp')).toBe('image/webp');
-  });
-
-  test('returns image/bmp for .bmp', () => {
-    expect(detectMimeType('bitmap.bmp')).toBe('image/bmp');
-  });
-
-  test('returns image/tiff for .tiff', () => {
-    expect(detectMimeType('scan.tiff')).toBe('image/tiff');
-  });
-
-  test('returns image/x-icon for .ico', () => {
-    expect(detectMimeType('favicon.ico')).toBe('image/x-icon');
-  });
-
-  test('returns application/octet-stream for unknown extension', () => {
-    expect(detectMimeType('file.xyz')).toBe('application/octet-stream');
-  });
-
-  test('is case-insensitive', () => {
-    expect(detectMimeType('PHOTO.PNG')).toBe('image/png');
-    expect(detectMimeType('image.JPG')).toBe('image/jpeg');
+  test('ignores fallback when extension is recognized', () => {
+    expect(detectMimeType('photo.png', 'image/jpeg')).toBe('image/png');
   });
 });
 
 // ─── mimeToExtension ─────────────────────────────────────────────────────────
 
 describe('mimeToExtension', () => {
-  test('returns .png for image/png', () => {
-    expect(mimeToExtension('image/png')).toBe('.png');
-  });
-
-  test('returns .jpg for image/jpeg', () => {
-    expect(mimeToExtension('image/jpeg')).toBe('.jpg');
-  });
-
-  test('returns .gif for image/gif', () => {
-    expect(mimeToExtension('image/gif')).toBe('.gif');
-  });
-
-  test('returns .svg for image/svg+xml', () => {
-    expect(mimeToExtension('image/svg+xml')).toBe('.svg');
-  });
-
-  test('returns .pdf for application/pdf', () => {
-    expect(mimeToExtension('application/pdf')).toBe('.pdf');
-  });
-
-  test('returns .bin for unknown MIME type', () => {
-    expect(mimeToExtension('unknown/type')).toBe('.bin');
-  });
-
-  test('is case-insensitive', () => {
-    expect(mimeToExtension('IMAGE/PNG')).toBe('.png');
-  });
-
-  test('returns .webp for image/webp', () => {
-    expect(mimeToExtension('image/webp')).toBe('.webp');
-  });
-
-  test('returns .bmp for image/bmp', () => {
-    expect(mimeToExtension('image/bmp')).toBe('.bmp');
-  });
-
-  test('returns .tiff for image/tiff', () => {
-    expect(mimeToExtension('image/tiff')).toBe('.tiff');
-  });
-
-  test('returns .ico for image/x-icon', () => {
-    expect(mimeToExtension('image/x-icon')).toBe('.ico');
-  });
-
-  test('returns .zip for application/zip', () => {
-    expect(mimeToExtension('application/zip')).toBe('.zip');
-  });
-
-  test('returns .txt for text/plain', () => {
-    expect(mimeToExtension('text/plain')).toBe('.txt');
-  });
-
-  test('returns .html for text/html', () => {
-    expect(mimeToExtension('text/html')).toBe('.html');
-  });
-
-  test('returns .md for text/markdown', () => {
-    expect(mimeToExtension('text/markdown')).toBe('.md');
-  });
-
-  test('returns .json for application/json', () => {
-    expect(mimeToExtension('application/json')).toBe('.json');
-  });
-
-  test('returns .xml for application/xml', () => {
-    expect(mimeToExtension('application/xml')).toBe('.xml');
-  });
-
-  test('returns .csv for text/csv', () => {
-    expect(mimeToExtension('text/csv')).toBe('.csv');
-  });
-
-  test('returns .doc for application/msword', () => {
-    expect(mimeToExtension('application/msword')).toBe('.doc');
-  });
-
-  test('returns .docx for wordprocessingml MIME', () => {
-    expect(mimeToExtension('application/vnd.openxmlformats-officedocument.wordprocessingml.document')).toBe('.docx');
-  });
-
-  test('returns .xls for application/vnd.ms-excel', () => {
-    expect(mimeToExtension('application/vnd.ms-excel')).toBe('.xls');
-  });
-
-  test('returns .xlsx for spreadsheetml MIME', () => {
-    expect(mimeToExtension('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')).toBe('.xlsx');
-  });
-
-  test('returns .ppt for application/vnd.ms-powerpoint', () => {
-    expect(mimeToExtension('application/vnd.ms-powerpoint')).toBe('.ppt');
-  });
-
-  test('returns .pptx for presentationml MIME', () => {
-    expect(mimeToExtension('application/vnd.openxmlformats-officedocument.presentationml.presentation')).toBe('.pptx');
-  });
-
-  test('returns .gz for application/gzip', () => {
-    expect(mimeToExtension('application/gzip')).toBe('.gz');
-  });
-
-  test('returns .tar for application/x-tar', () => {
-    expect(mimeToExtension('application/x-tar')).toBe('.tar');
-  });
-
-  test('returns .yaml for text/yaml', () => {
-    expect(mimeToExtension('text/yaml')).toBe('.yaml');
-  });
-
-  test('returns .odt for OpenDocument text', () => {
-    expect(mimeToExtension('application/vnd.oasis.opendocument.text')).toBe('.odt');
-  });
-
-  test('returns .ods for OpenDocument spreadsheet', () => {
-    expect(mimeToExtension('application/vnd.oasis.opendocument.spreadsheet')).toBe('.ods');
-  });
-
-  test('returns .odp for OpenDocument presentation', () => {
-    expect(mimeToExtension('application/vnd.oasis.opendocument.presentation')).toBe('.odp');
+  test.each([
+    ['image/png',                                                                          '.png'],
+    ['image/jpeg',                                                                         '.jpg'],
+    ['image/gif',                                                                          '.gif'],
+    ['image/svg+xml',                                                                      '.svg'],
+    ['image/webp',                                                                         '.webp'],
+    ['image/bmp',                                                                          '.bmp'],
+    ['image/tiff',                                                                         '.tiff'],
+    ['image/x-icon',                                                                       '.ico'],
+    ['application/pdf',                                                                    '.pdf'],
+    ['application/zip',                                                                    '.zip'],
+    ['application/gzip',                                                                   '.gz'],
+    ['application/x-tar',                                                                  '.tar'],
+    ['application/msword',                                                                 '.doc'],
+    ['application/vnd.ms-excel',                                                           '.xls'],
+    ['application/vnd.ms-powerpoint',                                                      '.ppt'],
+    ['application/vnd.openxmlformats-officedocument.wordprocessingml.document',            '.docx'],
+    ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',                  '.xlsx'],
+    ['application/vnd.openxmlformats-officedocument.presentationml.presentation',          '.pptx'],
+    ['application/vnd.oasis.opendocument.text',                                            '.odt'],
+    ['application/vnd.oasis.opendocument.spreadsheet',                                     '.ods'],
+    ['application/vnd.oasis.opendocument.presentation',                                    '.odp'],
+    ['application/json',                                                                   '.json'],
+    ['application/xml',                                                                    '.xml'],
+    ['text/plain',                                                                         '.txt'],
+    ['text/html',                                                                          '.html'],
+    ['text/markdown',                                                                      '.md'],
+    ['text/csv',                                                                           '.csv'],
+    ['text/yaml',                                                                          '.yaml'],
+    ['unknown/type',                                                                       '.bin'],
+    ['IMAGE/PNG',                                                                          '.png'],
+  ])('mimeToExtension(%s) → %s', (mime, ext) => {
+    expect(mimeToExtension(mime)).toBe(ext);
   });
 });
 
@@ -217,20 +113,17 @@ describe('isLocalPath', () => {
     expect(isLocalPath('/home/user/image.png')).toBe(true);
   });
 
-  test('returns true for file:// URIs', () => {
-    expect(isLocalPath('file:///tmp/image.png')).toBe(true);
-  });
-
-  test('returns false for http URLs', () => {
-    expect(isLocalPath('http://example.com/image.png')).toBe(false);
-  });
-
-  test('returns false for https URLs', () => {
-    expect(isLocalPath('https://example.com/image.png')).toBe(false);
-  });
-
-  test('returns false for data URIs', () => {
-    expect(isLocalPath('data:image/png;base64,abc123')).toBe(false);
+  test.each([
+    'http://example.com/image.png',
+    'https://example.com/image.png',
+    'data:image/png;base64,abc123',
+    'ftp://files.example.com/image.png',
+    'ssh://host/path/image.png',
+    's3://bucket/key/image.png',
+    'gs://bucket/object.png',
+    'file:///tmp/image.png',
+  ])('returns false for remote URI: %s', (uri) => {
+    expect(isLocalPath(uri)).toBe(false);
   });
 });
 
@@ -426,88 +319,55 @@ describe('resolveImagePaths', () => {
     expect(result.markdown).toBe('');
     expect(result.images).toHaveLength(0);
   });
+
+  test('skips images inside tilde code fences', async () => {
+    const md = '~~~\n![inside](logo.png)\n~~~\n![outside](logo.png)';
+    const result = await resolveImagePaths(md, tmpDir);
+
+    expect(result.images).toHaveLength(1);
+    expect(result.markdown).toContain('[[IMAGE_0]]');
+    expect(result.markdown).toContain('![inside](logo.png)');
+  });
+
+  test('normalizes CRLF line endings', async () => {
+    const md = '![Logo](logo.png)\r\nSome text\r\n![Photo](photo.jpg)';
+    const result = await resolveImagePaths(md, tmpDir);
+
+    expect(result.images).toHaveLength(2);
+    expect(result.markdown).toContain('[[IMAGE_0]]');
+    expect(result.markdown).toContain('[[IMAGE_1]]');
+    expect(result.markdown).not.toContain('\r');
+  });
 });
 
 // ─── detectMimeType (office/document types) ──────────────────────────────────
 
 describe('detectMimeType (office/document types)', () => {
-  test('returns application/pdf for .pdf', () => {
-    expect(detectMimeType('doc.pdf')).toBe('application/pdf');
-  });
-
-  test('returns correct type for .docx', () => {
-    expect(detectMimeType('report.docx')).toBe('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  });
-
-  test('returns correct type for .doc', () => {
-    expect(detectMimeType('old.doc')).toBe('application/msword');
-  });
-
-  test('returns correct type for .xlsx', () => {
-    expect(detectMimeType('data.xlsx')).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  });
-
-  test('returns correct type for .xls', () => {
-    expect(detectMimeType('data.xls')).toBe('application/vnd.ms-excel');
-  });
-
-  test('returns correct type for .pptx', () => {
-    expect(detectMimeType('slides.pptx')).toBe('application/vnd.openxmlformats-officedocument.presentationml.presentation');
-  });
-
-  test('returns correct type for .ppt', () => {
-    expect(detectMimeType('old.ppt')).toBe('application/vnd.ms-powerpoint');
-  });
-
-  test('returns application/zip for .zip', () => {
-    expect(detectMimeType('archive.zip')).toBe('application/zip');
-  });
-
-  test('returns application/gzip for .gz', () => {
-    expect(detectMimeType('log.gz')).toBe('application/gzip');
-  });
-
-  test('returns application/x-tar for .tar', () => {
-    expect(detectMimeType('archive.tar')).toBe('application/x-tar');
-  });
-
-  test('returns text/csv for .csv', () => {
-    expect(detectMimeType('data.csv')).toBe('text/csv');
-  });
-
-  test('returns application/json for .json', () => {
-    expect(detectMimeType('config.json')).toBe('application/json');
-  });
-
-  test('returns application/xml for .xml', () => {
-    expect(detectMimeType('feed.xml')).toBe('application/xml');
-  });
-
-  test('returns text/plain for .txt', () => {
-    expect(detectMimeType('readme.txt')).toBe('text/plain');
-  });
-
-  test('returns text/markdown for .md', () => {
-    expect(detectMimeType('doc.md')).toBe('text/markdown');
-  });
-
-  test('returns text/yaml for .yaml and .yml', () => {
-    expect(detectMimeType('config.yaml')).toBe('text/yaml');
-    expect(detectMimeType('config.yml')).toBe('text/yaml');
-  });
-
-  test('returns text/html for .html', () => {
-    expect(detectMimeType('page.html')).toBe('text/html');
-  });
-
-  test('returns correct type for OpenDocument formats', () => {
-    expect(detectMimeType('doc.odt')).toBe('application/vnd.oasis.opendocument.text');
-    expect(detectMimeType('sheet.ods')).toBe('application/vnd.oasis.opendocument.spreadsheet');
-    expect(detectMimeType('pres.odp')).toBe('application/vnd.oasis.opendocument.presentation');
-  });
-
-  test('is case-insensitive for new types', () => {
-    expect(detectMimeType('DOC.PDF')).toBe('application/pdf');
-    expect(detectMimeType('DATA.JSON')).toBe('application/json');
+  test.each([
+    ['doc.pdf',      'application/pdf'],
+    ['old.doc',      'application/msword'],
+    ['report.docx',  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    ['data.xls',     'application/vnd.ms-excel'],
+    ['data.xlsx',    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    ['old.ppt',      'application/vnd.ms-powerpoint'],
+    ['slides.pptx',  'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+    ['archive.zip',  'application/zip'],
+    ['log.gz',       'application/gzip'],
+    ['archive.tar',  'application/x-tar'],
+    ['data.csv',     'text/csv'],
+    ['config.json',  'application/json'],
+    ['feed.xml',     'application/xml'],
+    ['readme.txt',   'text/plain'],
+    ['doc.md',       'text/markdown'],
+    ['config.yaml',  'text/yaml'],
+    ['config.yml',   'text/yaml'],
+    ['page.html',    'text/html'],
+    ['doc.odt',      'application/vnd.oasis.opendocument.text'],
+    ['sheet.ods',    'application/vnd.oasis.opendocument.spreadsheet'],
+    ['pres.odp',     'application/vnd.oasis.opendocument.presentation'],
+    ['DOC.PDF',      'application/pdf'],
+    ['DATA.JSON',    'application/json'],
+  ])('detectMimeType(%s) → %s', (file, mime) => {
+    expect(detectMimeType(file)).toBe(mime);
   });
 });

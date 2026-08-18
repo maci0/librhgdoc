@@ -76,4 +76,4 @@ Audit of functionality in `templar` and `herald` evaluated for extraction into `
 
 ## Round 3 scan result
 
-No new viable candidates found. The projects have been thoroughly picked clean of shared patterns. Remaining overlap is blocked by the `string` token vs `OAuth2Client` auth interface split, is application-specific, or is too trivial to justify library functions.
+No new viable candidates found. Remaining overlap is blocked by the `string` token vs `OAuth2Client` auth interface split, is application-specific, or is too trivial to justify library functions.

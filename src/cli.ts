@@ -8,10 +8,13 @@
  */
 
 /** Format milliseconds as a human-readable duration string.
- * Returns `"450ms"` for sub-second durations, `"2.3s"` for longer ones. */
+ * Returns `"450ms"` for sub-second durations, `"2.3s"` for seconds,
+ * and `"6.0m"` for minute-level durations. */
 export function fmtTime(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return '0ms';
-  return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
 }
 
 /** Parsed author/presenter entry. */

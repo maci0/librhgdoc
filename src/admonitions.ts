@@ -13,9 +13,14 @@ import type { RgbColor } from './colors.ts';
 export type AdmonitionType = 'NOTE' | 'TIP' | 'IMPORTANT' | 'WARNING' | 'CAUTION';
 
 /** All valid admonition type strings. */
-export const ADMONITION_TYPES: ReadonlySet<string> = new Set([
+export const ADMONITION_TYPES: ReadonlySet<AdmonitionType> = new Set([
   'NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION',
-]);
+] as const);
+
+/** Type guard: checks whether `s` is one of the standard admonition types. */
+export function isAdmonitionType(s: string): s is AdmonitionType {
+  return (ADMONITION_TYPES as ReadonlySet<string>).has(s);
+}
 
 /** Emoji + label for each admonition type. */
 export const ADMONITION_LABELS: Record<AdmonitionType, string> = {

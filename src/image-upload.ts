@@ -69,7 +69,7 @@ export async function uploadImageToDrive(options: {
   );
 
   if (!res.ok) {
-    const text = await res.text();
+    const text = await res.text().catch(() => '');
     throw new Error(`Drive upload failed (${res.status}): ${text}`);
   }
 
@@ -77,142 +77,12 @@ export async function uploadImageToDrive(options: {
   const fileId = data.id;
   if (!fileId) throw new Error('Drive upload returned no file ID');
 
-  const url = data.webContentLink ?? `https://drive.google.com/uc?id=${fileId}&export=download`;
+  const url = data.webContentLink ?? `https://drive.google.com/uc?id=${encodeURIComponent(fileId)}&export=download`;
 
   return {
     url,
     cleanup: () => deleteGoogleDriveFile(token, fileId),
   };
-}
-
-/**
- * Upload an image via a temporary Google Slides presentation.
- *
- * Creates a presentation, inserts the image as a base64 data URI,
- * reads back the CDN content URL, and deletes the presentation.
- * This approach yields `lh7-rt.googleusercontent.com` URLs that
- * work with Google Docs/Slides insertInlineImage.
- *
- * @param options - Upload options.
- * @param options.token - OAuth2 access token.
- * @param options.base64 - Base64-encoded image data.
- * @param options.mimeType - MIME type of the image.
- * @returns The uploaded image with its CDN URL.
- */
-export async function uploadImageViaTempSlides(options: {
-  token: string;
-  base64: string;
-  mimeType: string;
-}): Promise<UploadedImage> {
-  const { token, base64, mimeType } = options;
-
-  // 1. Create a temp presentation
-  const createRes = await fetch('https://slides.googleapis.com/v1/presentations', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ title: 'librhgdoc-temp-images' }),
-  });
-
-  if (!createRes.ok) {
-    const text = await createRes.text();
-    throw new Error(`Slides creation failed (${createRes.status}): ${text}`);
-  }
-
-  const pres = (await createRes.json()) as {
-    presentationId?: string;
-    slides?: Array<{ objectId?: string }>;
-  };
-  const presId = pres.presentationId;
-  if (!presId) throw new Error('Slides creation returned no presentationId');
-
-  const slideId = pres.slides?.[0]?.objectId;
-  if (!slideId) throw new Error('Temp presentation has no slides');
-
-  try {
-    // 2. Insert the image via data URI
-    const dataUri = `data:${mimeType};base64,${base64}`;
-    const imgObjId = 'librhgdoc_tmp_img_0';
-
-    const batchRes = await fetch(
-      `https://slides.googleapis.com/v1/presentations/${presId}:batchUpdate`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requests: [
-            {
-              createImage: {
-                objectId: imgObjId,
-                url: dataUri,
-                elementProperties: {
-                  pageObjectId: slideId,
-                  size: {
-                    width: { magnitude: 100, unit: 'EMU' },
-                    height: { magnitude: 100, unit: 'EMU' },
-                  },
-                  transform: {
-                    scaleX: 1,
-                    scaleY: 1,
-                    translateX: 0,
-                    translateY: 0,
-                    unit: 'EMU',
-                  },
-                },
-              },
-            },
-          ],
-        }),
-      },
-    );
-
-    if (!batchRes.ok) {
-      const text = await batchRes.text();
-      throw new Error(`Slides batchUpdate failed (${batchRes.status}): ${text}`);
-    }
-
-    // 3. Read back the presentation to get the CDN URL
-    const getRes = await fetch(
-      `https://slides.googleapis.com/v1/presentations/${presId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-
-    if (!getRes.ok) {
-      const text = await getRes.text();
-      throw new Error(`Slides get failed (${getRes.status}): ${text}`);
-    }
-
-    const presData = (await getRes.json()) as {
-      slides?: Array<{
-        pageElements?: Array<{
-          objectId?: string;
-          image?: { contentUrl?: string };
-        }>;
-      }>;
-    };
-
-    const cdnUrl = presData.slides?.[0]?.pageElements?.find(
-      (el) => el.objectId === imgObjId,
-    )?.image?.contentUrl;
-
-    if (!cdnUrl) throw new Error('CDN URL not found after temp-Slides upload');
-
-    return {
-      url: cdnUrl,
-      cleanup: () => deleteGoogleDriveFile(token, presId),
-    };
-  } catch (err) {
-    // Clean up the temp presentation on failure
-    await deleteGoogleDriveFile(token, presId).catch(() => {});
-    throw err;
-  }
 }
 
 /**
@@ -234,7 +104,6 @@ export async function uploadImagesBatch(options: {
   const { token, images } = options;
   if (images.length === 0) return [];
 
-  // 1. Create a temp presentation
   const createRes = await fetch('https://slides.googleapis.com/v1/presentations', {
     method: 'POST',
     headers: {
@@ -245,7 +114,7 @@ export async function uploadImagesBatch(options: {
   });
 
   if (!createRes.ok) {
-    const text = await createRes.text();
+    const text = await createRes.text().catch(() => '');
     throw new Error(`Slides creation failed (${createRes.status}): ${text}`);
   }
 
@@ -260,7 +129,6 @@ export async function uploadImagesBatch(options: {
   if (!firstSlideId) throw new Error('Temp presentation has no slides');
 
   try {
-    // 2. Create additional slides if needed
     const slideIds = [firstSlideId];
     if (images.length > 1) {
       const addSlideRequests = [];
@@ -271,7 +139,7 @@ export async function uploadImagesBatch(options: {
       }
 
       const addRes = await fetch(
-        `https://slides.googleapis.com/v1/presentations/${presId}:batchUpdate`,
+        `https://slides.googleapis.com/v1/presentations/${encodeURIComponent(presId)}:batchUpdate`,
         {
           method: 'POST',
           headers: {
@@ -283,12 +151,11 @@ export async function uploadImagesBatch(options: {
       );
 
       if (!addRes.ok) {
-        const text = await addRes.text();
+        const text = await addRes.text().catch(() => '');
         throw new Error(`Slides addSlides failed (${addRes.status}): ${text}`);
       }
     }
 
-    // 3. Insert all images via data URIs in one batch
     const imgIds = images.map((_, i) => `librhgdoc_tmp_img_${i}`);
     const insertRequests = images.map((img, i) => {
       const dataUri = `data:${img.mimeType};base64,${img.base64}`;
@@ -315,7 +182,7 @@ export async function uploadImagesBatch(options: {
     });
 
     const insertRes = await fetch(
-      `https://slides.googleapis.com/v1/presentations/${presId}:batchUpdate`,
+      `https://slides.googleapis.com/v1/presentations/${encodeURIComponent(presId)}:batchUpdate`,
       {
         method: 'POST',
         headers: {
@@ -327,20 +194,19 @@ export async function uploadImagesBatch(options: {
     );
 
     if (!insertRes.ok) {
-      const text = await insertRes.text();
+      const text = await insertRes.text().catch(() => '');
       throw new Error(`Slides insertImages failed (${insertRes.status}): ${text}`);
     }
 
-    // 4. Read back all CDN URLs
     const getRes = await fetch(
-      `https://slides.googleapis.com/v1/presentations/${presId}`,
+      `https://slides.googleapis.com/v1/presentations/${encodeURIComponent(presId)}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },
     );
 
     if (!getRes.ok) {
-      const text = await getRes.text();
+      const text = await getRes.text().catch(() => '');
       throw new Error(`Slides get failed (${getRes.status}): ${text}`);
     }
 
@@ -380,6 +246,33 @@ export async function uploadImagesBatch(options: {
 }
 
 /**
+ * Upload an image via a temporary Google Slides presentation.
+ *
+ * Creates a presentation, inserts the image as a base64 data URI,
+ * reads back the CDN content URL, and deletes the presentation.
+ * This approach yields `lh7-rt.googleusercontent.com` URLs that
+ * work with Google Docs/Slides insertInlineImage.
+ *
+ * @param options - Upload options.
+ * @param options.token - OAuth2 access token.
+ * @param options.base64 - Base64-encoded image data.
+ * @param options.mimeType - MIME type of the image.
+ * @returns The uploaded image with its CDN URL.
+ */
+export async function uploadImageViaTempSlides(options: {
+  token: string;
+  base64: string;
+  mimeType: string;
+}): Promise<UploadedImage> {
+  const [result] = await uploadImagesBatch({
+    token: options.token,
+    images: [{ base64: options.base64, mimeType: options.mimeType }],
+  });
+  if (!result) throw new Error('CDN URL not found after temp-Slides upload');
+  return result;
+}
+
+/**
  * Delete a file from Google Drive.
  *
  * Used for cleaning up temporary presentations and uploaded images.
@@ -393,7 +286,7 @@ export async function deleteGoogleDriveFile(
   fileId: string,
 ): Promise<void> {
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}`,
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`,
     {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
@@ -402,7 +295,7 @@ export async function deleteGoogleDriveFile(
 
   // 204 = success, 404 = already deleted — both are fine
   if (!res.ok && res.status !== 404) {
-    const text = await res.text();
+    const text = await res.text().catch(() => '');
     throw new Error(`Drive delete failed (${res.status}): ${text}`);
   }
 }

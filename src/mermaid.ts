@@ -79,15 +79,17 @@ export function applyRHTheme(mermaidSource: string): string {
 /**
  * Extract `width` and `height` from an SVG string.
  *
- * Looks for `width="…"` / `width='…'` and `height="…"` / `height='…'`
- * attributes on the root `<svg>` element.  Returns `null` if either attribute is missing or
- * cannot be parsed as a number.
+ * Extracts the opening `<svg …>` tag and looks for `width="…"` / `width='…'`
+ * and `height="…"` / `height='…'` attributes on it.  Inner elements are
+ * ignored.  Returns `null` if either attribute is missing or cannot be parsed
+ * as a number.
  */
 export function extractSvgDimensions(
   svg: string,
 ): { width: number; height: number } | null {
-  const wMatch = svg.match(/width=["']([^"']+)["']/);
-  const hMatch = svg.match(/height=["']([^"']+)["']/);
+  const svgTag = svg.match(/<svg\b[^>]*>/)?.[0] ?? '';
+  const wMatch = svgTag.match(/width=["']([^"']+)["']/);
+  const hMatch = svgTag.match(/height=["']([^"']+)["']/);
   if (!wMatch || !hMatch) return null;
   const width = parseFloat(wMatch[1]);
   const height = parseFloat(hMatch[1]);
@@ -141,18 +143,22 @@ export async function renderMermaidPng(
   const rawSvg = renderMermaidSVG(themed, RH_MERMAID_THEME);
 
   // Resolve CSS variables that beautiful-mermaid may leave in the SVG
-  const resolved = rawSvg.replace(/var\(--[\w-]+\)/g, (match) => {
-    const varMap: Record<string, string> = {
-      '--bg': RH_MERMAID_THEME.bg,
-      '--fg': RH_MERMAID_THEME.fg,
-      '--accent': RH_MERMAID_THEME.accent,
-      '--line': RH_MERMAID_THEME.line,
-      '--muted': RH_MERMAID_THEME.muted,
-      '--surface': RH_MERMAID_THEME.surface,
-      '--border': RH_MERMAID_THEME.border,
-    };
-    const key = match.slice(4, -1); // strip "var(" and ")"
-    return varMap[key] ?? '#000000';
+  const varMap: Record<string, string> = {
+    '--bg': RH_MERMAID_THEME.bg,
+    '--fg': RH_MERMAID_THEME.fg,
+    '--accent': RH_MERMAID_THEME.accent,
+    '--line': RH_MERMAID_THEME.line,
+    '--muted': RH_MERMAID_THEME.muted,
+    '--surface': RH_MERMAID_THEME.surface,
+    '--border': RH_MERMAID_THEME.border,
+  };
+  const resolved = rawSvg.replace(/var\(--[\w-]+(?:\s*,\s*[^)]+)?\)/g, (match) => {
+    const key = match.match(/var\((--[\w-]+)/)?.[1] ?? '';
+    const mapped = varMap[key];
+    if (mapped) return mapped;
+    // If no mapping and a CSS fallback is present, use it
+    const fallbackMatch = match.match(/,\s*([^)]+)\)$/);
+    return fallbackMatch ? fallbackMatch[1].trim() : '#000000';
   });
 
   const resvg = new Resvg(resolved, { fitTo: { mode: 'zoom', value: scale } });

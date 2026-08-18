@@ -60,12 +60,7 @@ describe('contentHash', () => {
 });
 
 describe('blockHash', () => {
-  test('is the same function as contentHash', () => {
+  test('is an alias for contentHash', () => {
     expect(blockHash).toBe(contentHash);
-  });
-
-  test('produces identical output to contentHash', () => {
-    expect(blockHash('body', 'hello')).toBe(contentHash('body', 'hello'));
-    expect(blockHash('code', 'x = 1', 'py')).toBe(contentHash('code', 'x = 1', 'py'));
   });
 });

@@ -1,29 +1,29 @@
 # Features and Gaps — Red Hat Google Document Toolchain
 
-> Comprehensive inventory of features and known gaps across librhgdoc, templar, and herald.
+> Inventory of features and known gaps across librhgdoc, templar, and herald.
 > Last updated: August 2026.
 
 ---
 
 ## librhgdoc (shared library)
 
-v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
+v0.3.0 · 17 modules · ~3,250 lines · Bun runtime · MIT license
 3 optional peer dependencies: `highlight.js`, `beautiful-mermaid`, `@resvg/resvg-js`
 
 ### Module: colors
 
 **Features:**
-- `RH_COLORS` — 7 named brand colours: `red`, `black`, `white`, `gray`, `lightGray`, `darkBg`, `greyBg`
+- `RH_COLORS` — 8 named brand colours: `red`, `black`, `white`, `gray`, `lightGray`, `darkBg`, `greyBg`, `link`
 - `hexToRgb(hex)` — converts hex to Google API `{ red, green, blue }` (0–1 floats); accepts `#RRGGBB`, `RRGGBB`, `#RGB`, `RGB`
 - `rgbToHex(rgb)` — inverse conversion to `#rrggbb`
-- `normHex(hex)` — normalizes to lowercase `#`-prefixed hex; handles 3/6/8 digit forms
+- `normHex(hex)` — normalizes to lowercase `#`-prefixed hex; handles 3/6 digit forms
 - `isGrayHex(hex)` — HSV saturation < 0.15 + luminance heuristic
 - `RgbColor` interface
 
 **Gaps / Limitations:**
 - `hexToRgb` returns black `{0,0,0}` for invalid input — callers cannot distinguish "invalid" from "genuinely black" (no error/null path)
 - ✅ ~~`isGrayHex` only accepts 6-digit hex~~ — now accepts both 3-digit and 6-digit hex forms
-- `normHex` accepts 8-digit (RRGGBBAA) hex but no other function consumes alpha; alpha is silently accepted and ignored
+- ✅ ~~`normHex` accepts 8-digit (RRGGBBAA) hex but no other function consumes alpha~~ — `normHex` now rejects 8-digit hex (regex only allows 3/6 digits; returns empty string for invalid input)
 
 ### Module: hash
 
@@ -48,16 +48,15 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 ### Module: inline
 
 **Features:**
-- `parseInline(text, parentBold?, parentItalic?)` — recursive parser for `**bold**`, `*italic*`, `` `code` ``, `[link](url)`, `~~strikethrough~~`; supports nested combinations
+- `parseInline(text, parentBold?, parentItalic?)` — recursive parser for `**bold**`, `__bold__`, `*italic*`, `_italic_`, `` `code` ``, `[link](url)`, `~~strikethrough~~`, `![alt](url)` (alt-text passthrough), and backslash escapes; supports nested combinations
 - `stripInline(s)` — regex-based plain-text extractor
 - `TextRun` / `InlineSeg` interfaces
 
 **Gaps / Limitations:**
-- No support for `__bold__` or `_italic_` (underscore variants)
-- No support for `![image](url)` — image references pass through as text
+- Underscore variants (`__bold__`, `_italic_`) only trigger at word boundaries — intentional for `snake_case`, but differs from CommonMark
+- `![image](url)` becomes plain alt text, not a structured image run
 - `stripInline` uses a separate greedy-regex implementation, not derived from `parseInline`; can mishandle nested/adjacent markers
 - Link URLs limited to `http(s)://`, `mailto:`, and `#fragment` — other schemes (e.g. `ftp://`) are silently dropped
-- No support for escaped characters (e.g. `\*not italic\*`)
 
 ### Module: frontmatter
 
@@ -170,15 +169,15 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 
 **Features:**
 - `tokenize(code, language?, colorMap?)` — syntax highlighting via highlight.js
-- `HIGHLIGHT_COLORS` — 31 light-theme CSS class→hex mappings
-- `DARK_HIGHLIGHT_COLORS` — 26 dark-theme mappings (used by herald)
+- `HIGHLIGHT_COLORS` — 35 light-theme CSS class→hex mappings
+- `DARK_HIGHLIGHT_COLORS` — 35 dark-theme mappings (used by herald)
 - `getSupportedLanguages()` — lists available highlight.js languages
 - `ColoredRun` / `HighlightResult` interfaces
 
 **Gaps / Limitations:**
 - highlight.js is an optional peer dep — `tokenize` falls back to a single unstyled run if missing
 - Uses `require('highlight.js')` (CJS) — may conflict in pure ESM environments
-- ✅ ~~`DARK_HIGHLIGHT_COLORS` has only 14 entries~~ — now has 26 entries (up from 14), covering most highlight.js token classes
+- ✅ ~~`DARK_HIGHLIGHT_COLORS` has only 14 entries~~ — now has 35 entries (same as `HIGHLIGHT_COLORS`), covering all highlight.js token classes
 - Different engine from templar's Shiki-based highlighting — different output format (`ColoredRun[]` vs `{start, end, color}`)
 - HTML entity decoder handles common entities but may miss rare ones
 - No line-number annotation or line-range highlighting
@@ -233,15 +232,33 @@ v0.3.0 · 16 modules · ~2,480 lines · Bun runtime · MIT license
 - Only the 5 GitHub-standard types — no extensibility for custom admonition types
 - Constants only — no parsing or rendering logic (consumer projects provide that)
 
+### Module: drive
+
+**Features:**
+- `findOrCreateFolder(token, folderName, parentId?)` — search Drive for a folder by name (optionally under a parent), create if missing; returns folder ID
+- `moveFileToFolder(token, fileId, folderId)` — move a file by replacing its parents via `addParents` / `removeParents`
+
+**Gaps / Limitations:**
+- Search returns at most one match (`pageSize: 1`) — duplicate folder names are not disambiguated
+- Uses native `fetch()` only — no typed `googleapis` client
+- No shared-drive / `supportsAllDrives` query flags
+
 ### Module: lint
 
 **Features:**
+- `forEachNonCodeLine(text, callback)` — utility that iterates lines outside fenced code blocks (used by most lint functions)
 - `lintBrandNames(text)` — checks 8 brand spelling patterns: `Red Hat`, `OpenShift`, `Kubernetes`, `Ansible`, `RHEL`, `Fedora`, `Podman`, `CentOS`
 - `lintBareUrls(text)` — flags bare URLs > 20 chars not wrapped in markdown link syntax
+- `lintUnclosedCodeFence(text)` — detects unmatched ``` or ~~~ fences
+- `lintCodeBlockLanguage(text)` — flags opening fences without a language identifier
+- `lintEmDash(text)` — flags em dash (U+2014) in prose lines
+- `lintPlaceholderText(text)` — flags TODO, TBD, PLACEHOLDER, FIXME, XXX in prose
+- `lintEmptyImageAlt(text)` — flags images with empty alt text (`![](url)`)
+- `lintLongCodeBlock(text, maxLines?)` — flags code blocks exceeding a line threshold (default 50)
 - `LintMessage` / `LintLevel` types
 
 **Gaps / Limitations:**
-- Only 2 of templar's 20+ lint checks were extracted — the rest are too tightly coupled to templar's state machine
+- Only 8 of templar's 20+ lint checks were extracted — the rest are too tightly coupled to templar's state machine
 - ✅ ~~`lintBrandNames` only checks 4 brands~~ — now checks 8 brands (Red Hat, OpenShift, Kubernetes, Ansible, RHEL, Fedora, Podman, CentOS)
 - No column-level positions in `LintMessage` (only `line`)
 - `lintBareUrls` skips lines that are entirely a URL — may miss bare URLs in reference lists
@@ -530,8 +547,7 @@ All other languages render as plain monospace text with no syntax colouring.
 |--------|---------|----------|
 | `lib/file-upload.ts` | Uploads local non-image files to Google Drive (private); replaces local paths with `webViewLink` | Sequential uploads, no parallelism |
 | `lib/placeholders.ts` | Phase 2 force-full pipeline: replaces placeholder text with real tables/images | Sequential table matching; can mis-pair if Phase A position deltas are large |
-| `lib/image-upload.ts` | Two-strategy image hosting: HTML-to-Drive primary (auto-splits at 4.5 MB), GCS fallback | Signed URIs expire ~30 min — batchUpdate must complete within that window |
-| `lib/gcs.ts` | GCS public bucket creation and image upload (`templar-imgs-{project_id}`) | Requires public bucket — not usable in environments that prohibit public access |
+| `lib/image-upload.ts` | Two-strategy image hosting: HTML-to-Drive primary (auto-splits at 4.5 MB) | Signed URIs expire ~30 min — batchUpdate must complete within that window |
 | `lib/docs-api.ts` | Low-level Docs REST API layer (create doc, named styles, page style, clear body, batchUpdate, footer, code blocks, tables, admonitions, fragment links, column widths) | 200-request-per-batchUpdate limit (Docs API constraint) |
 | `lib/docs-blocks.ts` | Parses Docs API response into typed `DocsBlock[]` | Admonition false-positive guard (`ADMON_LABEL_RE`) may misidentify user tables with matching first-line keywords |
 | `lib/requests.ts` | Builds batchUpdate requests for incremental sync text operations | Fragment links in body/list dropped with stderr warning |
@@ -732,7 +748,6 @@ Both projects use librhgdoc's `auth` module with credentials stored at `~/.confi
 | Table of Contents | Generated with clickable heading links |
 | Admonitions | 5-type callout boxes with emoji labels and coloured backgrounds |
 | File uploads | Arbitrary non-image file attachments to Google Drive |
-| GCS integration | Cloud storage fallback for image hosting |
 | Shiki syntax highlighting | 14 languages with precise token colouring |
 
 ### What herald has that templar doesn't
@@ -777,7 +792,7 @@ These are **upstream constraints** that cannot be fixed in toolchain code.
 
 | Limitation | Impact | Workaround |
 |------------|--------|------------|
-| **No image insertion from raw bytes** | Can't embed images directly in batchUpdate | ✅ HTML-to-Drive (signed `contentUri`, ~30 min TTL); auto-splits HTML at 4.5 MB. GCS fallback. |
+| **No image insertion from raw bytes** | Can't embed images directly in batchUpdate | ✅ HTML-to-Drive (signed `contentUri`, ~30 min TTL); auto-splits HTML at 4.5 MB. |
 | **No Table of Contents API** | No `body.appendToc()` equivalent in REST | ⚠️ Manual TOC with `insertText` + `updateTextStyle(link: { headingId })`. Clickable but **no page numbers and no auto-update**. |
 | **No page numbers** | No `footer.appendPageNumber()` in REST | ⚠️ Static hint text in footer: "Use Insert → Page numbers". **Manual step required.** |
 | **No bookmarks** | No `doc.addBookmark(position)` in REST | ⚠️ Uses heading IDs (`paragraphStyle.headingId`) for in-document links. **Heading-only**, no arbitrary position bookmarks. |
@@ -806,5 +821,5 @@ These are **upstream constraints** that cannot be fixed in toolchain code.
 
 | Limitation | Impact | Workaround |
 |------------|--------|------------|
-| **GCS requires public bucket** | Image hosting via GCS needs `allUsers` objectViewer IAM | ⚠️ HTML-to-Drive is the primary strategy; GCS is opt-in fallback only. Not usable in environments that prohibit public access. |
-| **No folder support in toolchain** | Documents/presentations created in Drive root | ❌ Not implemented — user must organize manually. |
+| **Duplicate folder names** | `findOrCreateFolder` returns the first match only | ⚠️ Callers should use unique names or pass `parentId` to narrow the search. |
+| **Shared drives** | Helpers omit `supportsAllDrives` | ❌ Shared-drive folders/files may fail until callers add those flags. |

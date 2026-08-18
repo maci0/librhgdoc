@@ -4,12 +4,11 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "outDir": "dist",
-    "rootDir": "src",
-    "declaration": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "skipLibCheck": true,
     "types": ["bun-types"],
     "esModuleInterop": true
   },
-  "include": ["src"]
+  "include": ["src", "tests"]
 }

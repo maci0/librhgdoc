@@ -4,8 +4,6 @@ import {
   getSupportedLanguages,
   HIGHLIGHT_COLORS,
   DARK_HIGHLIGHT_COLORS,
-  type ColoredRun,
-  type HighlightResult,
 } from '../src/highlight.ts';
 
 // ─── HIGHLIGHT_COLORS ─────────────────────────────────────────────────────────

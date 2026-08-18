@@ -76,6 +76,16 @@ describe('parseFrontmatter', () => {
     const result = parseFrontmatter('tags: [a, b');
     expect(result.tags).toBe('[a, b');
   });
+
+  test('parses mixed block sequence of scalars and objects', () => {
+    const result = parseFrontmatter(
+      'items:\n  - simple string\n  - name: Alice\n    role: dev',
+    );
+    expect(result.items as unknown).toEqual([
+      'simple string',
+      { name: 'Alice', role: 'dev' },
+    ]);
+  });
 });
 
 describe('stringifyFrontmatter', () => {
@@ -208,6 +218,56 @@ describe('parseScalar trailing quote preservation', () => {
   test('preserves trailing quote that is not a delimiter', () => {
     const result = parseFrontmatter('val: end quote"');
     expect(result.val).toBe('end quote"');
+  });
+});
+
+describe('parseScalar un-escaping', () => {
+  test('un-escapes escaped double quotes in double-quoted scalar', () => {
+    const result = parseFrontmatter('title: "He said \\"hello\\""');
+    expect(result.title).toBe('He said "hello"');
+  });
+
+  test('un-escapes escaped backslashes in double-quoted scalar', () => {
+    const result = parseFrontmatter('path: "C:\\\\Users\\\\test"');
+    expect(result.path).toBe('C:\\Users\\test');
+  });
+
+  test('round-trips scalar with embedded quotes', () => {
+    const data = { title: 'He said "hello"' };
+    const yaml = stringifyFrontmatter(data);
+    const parsed = parseFrontmatter(yaml);
+    expect(parsed.title).toBe('He said "hello"');
+  });
+});
+
+describe('parseScalar newline/carriage-return un-escaping', () => {
+  test('round-trips scalar containing newlines', () => {
+    const data = { note: 'line1\nline2\nline3' };
+    const yaml = stringifyFrontmatter(data);
+    const parsed = parseFrontmatter(yaml);
+    expect(parsed.note).toBe('line1\nline2\nline3');
+  });
+
+  test('round-trips scalar containing carriage returns', () => {
+    const data = { note: 'a\rb\rc' };
+    const yaml = stringifyFrontmatter(data);
+    const parsed = parseFrontmatter(yaml);
+    expect(parsed.note).toBe('a\rb\rc');
+  });
+
+  test('round-trips scalar with mixed newlines and backslashes', () => {
+    const data = { note: 'path\\dir\nline2' };
+    const yaml = stringifyFrontmatter(data);
+    const parsed = parseFrontmatter(yaml);
+    expect(parsed.note).toBe('path\\dir\nline2');
+  });
+
+  test('round-trips backslash-n that is not a newline (C:\\new)', () => {
+    const data = { path: 'C:\\new' };
+    const yaml = stringifyFrontmatter(data);
+    expect(yaml).toContain('"C:\\\\new"');
+    const parsed = parseFrontmatter(yaml);
+    expect(parsed.path).toBe('C:\\new');
   });
 });
 

@@ -12,6 +12,9 @@ import {
   refreshAccessToken,
   exchangeCodeForToken,
   defaultAuthConfig,
+  getEnvToken,
+  getValidToken,
+  TOKEN_ENV_VARS,
   DEFAULT_CREDENTIALS_PATH,
   DEFAULT_TOKEN_PATH,
   DEFAULT_SCOPES,
@@ -273,7 +276,7 @@ describe('refreshAccessToken', () => {
     globalThis.fetch = (async () =>
       new Response(JSON.stringify({ error: 'invalid_grant' }), {
         status: 400,
-      })) as typeof fetch;
+      })) as unknown as typeof fetch;
     try {
       await expect(refreshAccessToken(creds, baseToken)).rejects.toThrow(
         'Token refresh failed: HTTP 400',
@@ -289,7 +292,7 @@ describe('refreshAccessToken', () => {
       new Response(
         JSON.stringify({ access_token: 'new-at', expires_in: 3600 }),
         { status: 200 },
-      )) as typeof fetch;
+      )) as unknown as typeof fetch;
     try {
       const refreshed = await refreshAccessToken(creds, baseToken);
       expect(refreshed.access_token).toBe('new-at');
@@ -309,7 +312,7 @@ describe('refreshAccessToken', () => {
         JSON.stringify({ access_token: 'x', expires_in: 3600 }),
         { status: 200 },
       );
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     try {
       await refreshAccessToken(creds, baseToken);
       expect(capturedBody).toContain('grant_type=refresh_token');
@@ -348,15 +351,9 @@ describe('DEFAULT_TOKEN_PATH', () => {
 // ─── DEFAULT_SCOPES ────────────────────────────────────────────────────────
 
 describe('DEFAULT_SCOPES', () => {
-  test('contains documents scope', () => {
+  test('contains documents, presentations, and drive scopes', () => {
     expect(DEFAULT_SCOPES).toContain('https://www.googleapis.com/auth/documents');
-  });
-
-  test('contains presentations scope', () => {
     expect(DEFAULT_SCOPES).toContain('https://www.googleapis.com/auth/presentations');
-  });
-
-  test('contains drive scope', () => {
     expect(DEFAULT_SCOPES).toContain('https://www.googleapis.com/auth/drive');
   });
 });
@@ -418,7 +415,7 @@ describe('exchangeCodeForToken', () => {
           scope: 'email',
         }),
         { status: 200 },
-      )) as typeof fetch;
+      )) as unknown as typeof fetch;
     try {
       const token = await exchangeCodeForToken(creds, 'auth-code-123', 'http://localhost:9999');
       expect(token.access_token).toBe('new-at');
@@ -442,7 +439,7 @@ describe('exchangeCodeForToken', () => {
         JSON.stringify({ access_token: 'x', expires_in: 3600 }),
         { status: 200 },
       );
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
     try {
       await exchangeCodeForToken(creds, 'the-code', 'http://localhost:8080');
       expect(capturedUrl).toContain('oauth2.googleapis.com/token');
@@ -462,7 +459,7 @@ describe('exchangeCodeForToken', () => {
       new Response(
         JSON.stringify({ error: 'invalid_grant', error_description: 'Code expired' }),
         { status: 400 },
-      )) as typeof fetch;
+      )) as unknown as typeof fetch;
     try {
       await expect(
         exchangeCodeForToken(creds, 'bad-code', 'http://localhost'),
@@ -478,12 +475,164 @@ describe('exchangeCodeForToken', () => {
       new Response(
         JSON.stringify({ access_token: 'at', expires_in: 3600 }),
         { status: 200 },
-      )) as typeof fetch;
+      )) as unknown as typeof fetch;
     try {
       const token = await exchangeCodeForToken(creds, 'code', 'http://localhost');
       expect(token.refresh_token).toBe('');
     } finally {
       globalThis.fetch = origFetch;
+    }
+  });
+});
+
+// ─── getEnvToken / TOKEN_ENV_VARS ─────────────────────────────────────────
+
+describe('TOKEN_ENV_VARS', () => {
+  test('includes GOOGLE_WORKSPACE_CLI_TOKEN', () => {
+    expect(TOKEN_ENV_VARS).toContain('GOOGLE_WORKSPACE_CLI_TOKEN');
+  });
+
+  test('includes GWS_TOKEN', () => {
+    expect(TOKEN_ENV_VARS).toContain('GWS_TOKEN');
+  });
+});
+
+describe('getEnvToken', () => {
+  // Save and restore env vars around each test
+  const saved: Record<string, string | undefined> = {};
+
+  function clearTokenVars() {
+    for (const name of TOKEN_ENV_VARS) {
+      saved[name] = process.env[name];
+      delete process.env[name];
+    }
+  }
+
+  function restoreTokenVars() {
+    for (const name of TOKEN_ENV_VARS) {
+      if (saved[name] !== undefined) process.env[name] = saved[name];
+      else delete process.env[name];
+    }
+  }
+
+  test('returns null when no env vars set', () => {
+    clearTokenVars();
+    try {
+      expect(getEnvToken()).toBeNull();
+    } finally {
+      restoreTokenVars();
+    }
+  });
+
+  test('returns GOOGLE_WORKSPACE_CLI_TOKEN when set', () => {
+    clearTokenVars();
+    try {
+      process.env.GOOGLE_WORKSPACE_CLI_TOKEN = 'gws-token-123';
+      expect(getEnvToken()).toBe('gws-token-123');
+    } finally {
+      restoreTokenVars();
+    }
+  });
+
+  test('returns GWS_TOKEN when set', () => {
+    clearTokenVars();
+    try {
+      process.env.GWS_TOKEN = 'short-token-456';
+      expect(getEnvToken()).toBe('short-token-456');
+    } finally {
+      restoreTokenVars();
+    }
+  });
+
+  test('GOOGLE_WORKSPACE_CLI_TOKEN takes precedence over GWS_TOKEN', () => {
+    clearTokenVars();
+    try {
+      process.env.GOOGLE_WORKSPACE_CLI_TOKEN = 'primary';
+      process.env.GWS_TOKEN = 'secondary';
+      expect(getEnvToken()).toBe('primary');
+    } finally {
+      restoreTokenVars();
+    }
+  });
+
+  test('skips empty string values', () => {
+    clearTokenVars();
+    try {
+      process.env.GOOGLE_WORKSPACE_CLI_TOKEN = '';
+      process.env.GWS_TOKEN = 'fallback';
+      expect(getEnvToken()).toBe('fallback');
+    } finally {
+      restoreTokenVars();
+    }
+  });
+
+  test('trims whitespace', () => {
+    clearTokenVars();
+    try {
+      process.env.GOOGLE_WORKSPACE_CLI_TOKEN = '  tok-with-spaces  ';
+      expect(getEnvToken()).toBe('tok-with-spaces');
+    } finally {
+      restoreTokenVars();
+    }
+  });
+
+  test('skips whitespace-only values', () => {
+    clearTokenVars();
+    try {
+      process.env.GOOGLE_WORKSPACE_CLI_TOKEN = '   ';
+      expect(getEnvToken()).toBeNull();
+    } finally {
+      restoreTokenVars();
+    }
+  });
+});
+
+// ─── getValidToken with env var ───────────────────────────────────────────
+
+describe('getValidToken (env var interop)', () => {
+  const saved: Record<string, string | undefined> = {};
+
+  function clearTokenVars() {
+    for (const name of TOKEN_ENV_VARS) {
+      saved[name] = process.env[name];
+      delete process.env[name];
+    }
+  }
+
+  function restoreTokenVars() {
+    for (const name of TOKEN_ENV_VARS) {
+      if (saved[name] !== undefined) process.env[name] = saved[name];
+      else delete process.env[name];
+    }
+  }
+
+  test('returns env token without touching filesystem', async () => {
+    clearTokenVars();
+    try {
+      process.env.GWS_TOKEN = 'env-access-token';
+      // Use bogus paths that don't exist — should never be read
+      const config = defaultAuthConfig({
+        credentialsPath: '/nonexistent/credentials.json',
+        tokenPath: '/nonexistent/token.json',
+      });
+      const token = await getValidToken(config);
+      expect(token).toBe('env-access-token');
+    } finally {
+      restoreTokenVars();
+    }
+  });
+
+  test('falls through to file-based when env var not set', async () => {
+    clearTokenVars();
+    try {
+      const config = defaultAuthConfig({
+        credentialsPath: '/nonexistent/credentials.json',
+        tokenPath: '/nonexistent/token.json',
+      });
+      // Should throw because the file doesn't exist
+      await expect(getValidToken(config)).rejects.toThrow();
+    } finally {
+      restoreTokenVars();
     }
   });
 });

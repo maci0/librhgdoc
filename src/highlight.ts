@@ -104,6 +104,13 @@ export const DARK_HIGHLIGHT_COLORS: Record<string, string> = {
   'hljs-doctag':            '#a8d4ff',
   'hljs-section':           '#ffffff',
   'hljs-bullet':            '#daf1f1',
+  'hljs-function':          '#f6f6f6',
+  'hljs-params':            '#daf1f1',
+  'hljs-subst':             '#fce3e3',
+  'hljs-emphasis':          '#daf1f1',
+  'hljs-strong':            '#f6f6f6',
+  'hljs-formula':           '#d4a8ff',
+  'hljs-quote':             '#6a6e73',
 };
 
 /** Default text colour when no token-specific colour applies. */
@@ -126,6 +133,9 @@ function getHljs(): typeof import('highlight.js').default | null {
 /**
  * Decode HTML entities produced by highlight.js.
  */
+const toCodePoint = (cp: number, fallback: string) =>
+  Number.isInteger(cp) && cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : fallback;
+
 function decodeEntities(s: string): string {
   return s
     .replace(/&lt;/g, '<')
@@ -136,22 +146,8 @@ function decodeEntities(s: string): string {
     .replace(/&#x27;/g, "'")
     .replace(/&#96;/g, '`')
     .replace(/&#x60;/g, '`')
-    .replace(/&#x([0-9a-fA-F]+);/g, (_raw, h) => {
-      const cp = parseInt(h, 16);
-      try {
-        return Number.isInteger(cp) && cp >= 0 && cp <= 0x10ffff
-          ? String.fromCodePoint(cp)
-          : _raw;
-      } catch { return _raw; }
-    })
-    .replace(/&#(\d+);/g, (_raw, n) => {
-      const cp = Number(n);
-      try {
-        return Number.isInteger(cp) && cp >= 0 && cp <= 0x10ffff
-          ? String.fromCodePoint(cp)
-          : _raw;
-      } catch { return _raw; }
-    });
+    .replace(/&#x([0-9a-fA-F]+);/g, (raw, h) => toCodePoint(parseInt(h, 16), raw))
+    .replace(/&#(\d+);/g, (raw, n) => toCodePoint(Number(n), raw));
 }
 
 /**

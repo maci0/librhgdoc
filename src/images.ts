@@ -10,6 +10,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
+import { forEachNonCodeLine } from './lint.ts';
 
 /** Map of file extensions to MIME types for recognized image formats. */
 const IMAGE_MIME_MAP: Record<string, string> = {
@@ -56,64 +57,47 @@ const MIME_MAP: Record<string, string> = { ...IMAGE_MIME_MAP, ...DOC_MIME_MAP };
 /** Set of recognized image file extensions (e.g. `.png`, `.jpg`). */
 export const IMAGE_EXTENSIONS = new Set(Object.keys(IMAGE_MIME_MAP));
 
+/** Auto-generated reverse map: MIME type → preferred extension.
+ * When multiple extensions share a MIME type, the first one wins. */
+const REVERSE_MIME_MAP: Record<string, string> = (() => {
+  const rev: Record<string, string> = {};
+  for (const [ext, mime] of Object.entries(MIME_MAP)) {
+    if (!rev[mime]) rev[mime] = ext;
+  }
+  return rev;
+})();
+
 /** Map a MIME type string to a file extension (with leading dot).
  * Returns `'.bin'` for unrecognized MIME types.
  * @example mimeToExtension('image/jpeg') // → '.jpg' */
 export function mimeToExtension(mime: string): string {
-  const map: Record<string, string> = {
-    'image/png': '.png',
-    'image/jpeg': '.jpg',
-    'image/gif': '.gif',
-    'image/svg+xml': '.svg',
-    'image/webp': '.webp',
-    'image/bmp': '.bmp',
-    'image/tiff': '.tiff',
-    'image/x-icon': '.ico',
-    'application/pdf': '.pdf',
-    'application/zip': '.zip',
-    'text/plain': '.txt',
-    'text/html': '.html',
-    'text/markdown': '.md',
-    'application/json': '.json',
-    'application/xml': '.xml',
-    'text/csv': '.csv',
-    'application/msword': '.doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-    'application/vnd.ms-excel': '.xls',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
-    'application/vnd.ms-powerpoint': '.ppt',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
-    'application/gzip': '.gz',
-    'application/x-tar': '.tar',
-    'text/yaml': '.yaml',
-    'application/vnd.oasis.opendocument.text': '.odt',
-    'application/vnd.oasis.opendocument.spreadsheet': '.ods',
-    'application/vnd.oasis.opendocument.presentation': '.odp',
-  };
-  return map[mime.toLowerCase()] ?? '.bin';
+  return REVERSE_MIME_MAP[mime.toLowerCase()] ?? '.bin';
 }
 
 /**
- * Detect the MIME type of an image file from its extension.
+ * Detect the MIME type of a file from its extension.
  *
- * @param filePath - Path to the image file.
- * @returns The detected MIME type, or `application/octet-stream` for unknown extensions.
+ * @param filePath  - Path to the file.
+ * @param fallback  - Value returned when the extension is not recognized.
+ *                    Defaults to `'application/octet-stream'`.
+ * @returns The detected MIME type, or {@link fallback} for unknown extensions.
  */
-export function detectMimeType(filePath: string): string {
+export function detectMimeType(filePath: string, fallback = 'application/octet-stream'): string {
   const ext = extname(filePath).toLowerCase();
-  return MIME_MAP[ext] ?? 'application/octet-stream';
+  return MIME_MAP[ext] ?? fallback;
 }
 
 /**
  * Check whether a URL or path refers to a local file.
  *
- * Returns `false` for `http://`, `https://`, and `data:` URIs.
- * Returns `true` for relative paths, absolute paths, and `file://` URIs.
+ * Returns `false` for any URI with a `://` scheme (e.g. `http://`, `https://`,
+ * `ftp://`, `s3://`, `file://`) and for `data:` URIs.
+ * Returns `true` for relative paths and absolute paths.
  *
  * @param url - The URL or file path to check.
  */
 export function isLocalPath(url: string): boolean {
-  if (/^https?:\/\//i.test(url)) return false;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) return false;
   if (url.startsWith('data:')) return false;
   return true;
 }
@@ -141,21 +125,16 @@ export interface ImageRef {
 /**
  * Find all `![alt](path)` references in Markdown where the path is a local file.
  *
- * Skips references inside fenced code blocks, and skips remote URLs
- * (`http://`, `https://`) and `data:` URIs.
+ * Skips references inside fenced code blocks, and skips any URI with a
+ * `://` scheme or a `data:` prefix.
  *
  * @param markdown - The Markdown source to scan.
  * @returns An array of image references found.
  */
 export function findImageRefs(markdown: string): ImageRef[] {
   const refs: ImageRef[] = [];
-  const lines = markdown.split('\n');
-  let inCode = false;
 
-  for (const line of lines) {
-    if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) { inCode = !inCode; continue; }
-    if (inCode) continue;
-
+  forEachNonCodeLine(markdown, (line) => {
     const re = /!\[([^\]]*)\]\(([^)]+)\)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(line)) !== null) {
@@ -163,7 +142,7 @@ export function findImageRefs(markdown: string): ImageRef[] {
       if (!isLocalPath(path)) continue;
       refs.push({ alt, path, originalMarkdown });
     }
-  }
+  });
 
   return refs;
 }
@@ -218,13 +197,23 @@ export async function resolveImagePaths(
   }> = [];
 
   let idx = 0;
-  const lines = markdown.split('\n');
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
   const outLines: string[] = [];
-  let inCode = false;
+  let openMarker: string | null = null;
 
   for (const line of lines) {
-    if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) { inCode = !inCode; outLines.push(line); continue; }
-    if (inCode) { outLines.push(line); continue; }
+    const fm = line.match(/^\s*(```+|~~~+)/);
+    if (fm) {
+      const marker = fm[1];
+      if (openMarker === null) {
+        openMarker = marker;
+      } else if (marker.charAt(0) === openMarker.charAt(0) && marker.length >= openMarker.length) {
+        openMarker = null;
+      }
+      outLines.push(line);
+      continue;
+    }
+    if (openMarker !== null) { outLines.push(line); continue; }
 
     let result = line;
     const re = /!\[([^\]]*)\]\(([^)]+)\)/g;

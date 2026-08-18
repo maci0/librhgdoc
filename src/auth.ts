@@ -157,21 +157,61 @@ export async function refreshAccessToken(
   };
 }
 
+// ─── Environment variable token names ────────────────────────────────────────
+
+/**
+ * Environment variables checked for a pre-obtained access token.
+ *
+ * Checked in order; the first non-empty value wins.  This lets users
+ * authenticated via the Google Workspace CLI (`gws auth login`) skip
+ * a separate rhgdoc auth flow:
+ *
+ * ```bash
+ * export GOOGLE_WORKSPACE_CLI_TOKEN=$(gws auth export | jq -r .access_token)
+ * templar convert doc.md
+ * ```
+ *
+ * `GWS_TOKEN` is a shorter convenience alias.
+ */
+export const TOKEN_ENV_VARS = [
+  'GOOGLE_WORKSPACE_CLI_TOKEN',
+  'GWS_TOKEN',
+] as const;
+
+/**
+ * Return a pre-obtained access token from the environment, or `null`
+ * if none of the recognised env vars are set.
+ */
+export function getEnvToken(): string | null {
+  for (const name of TOKEN_ENV_VARS) {
+    const val = process.env[name];
+    if (val && val.trim()) return val.trim();
+  }
+  return null;
+}
+
 // ─── High-level entry point ─────────────────────────────────────────────────
 
 /**
- * Load credentials and token, refresh if expired or near-expiry, persist the
- * refreshed token, and return the current `access_token`.
+ * Return a valid Google OAuth2 access token.
  *
- * @throws If no token file exists, or the refresh request fails.
+ * Resolution order:
+ * 1. `GOOGLE_WORKSPACE_CLI_TOKEN` or `GWS_TOKEN` environment variable
+ *    (returned directly — no refresh, no file I/O).
+ * 2. File-based token at `config.tokenPath`, refreshed if expired.
+ *
+ * @throws If no token is available from any source, or the refresh fails.
  */
 export async function getValidToken(config: AuthConfig): Promise<string> {
+  const envToken = getEnvToken();
+  if (envToken) return envToken;
+
   const credentials = await loadCredentials(config.credentialsPath);
   const token = await loadToken(config.tokenPath);
   if (!token) {
     throw new Error(
       `No token file found at ${config.tokenPath}. ` +
-        'Run the OAuth2 consent flow first.',
+        'Run the OAuth2 consent flow first, or set GOOGLE_WORKSPACE_CLI_TOKEN / GWS_TOKEN.',
     );
   }
 

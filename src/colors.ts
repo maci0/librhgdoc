@@ -35,6 +35,8 @@ export const RH_COLORS = {
   darkBg:   { red: 0.161,  green: 0.161,  blue: 0.161  } as RgbColor,
   /** Grey background for slide layouts — #F2F2F2. */
   greyBg:   { red: 242 / 255, green: 242 / 255, blue: 242 / 255 } as RgbColor,
+  /** Link blue — #0066CC */
+  link:     { red: 0,      green: 0.4,   blue: 0.8   } as RgbColor,
 } as const;
 
 /**
@@ -69,11 +71,14 @@ export function rgbToHex(rgb: RgbColor): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
-/** Normalize a hex color string: lowercase, ensure `#` prefix. */
+/** Normalize a hex color string: lowercase, ensure `#` prefix, expand 3→6 digits. */
 export function normHex(hex: string): string {
   if (!hex) return '';
-  const stripped = hex.replace(/^#+/, '');
-  if (!/^[0-9a-f]{3}$|^[0-9a-f]{6}$|^[0-9a-f]{8}$/i.test(stripped)) return '';
+  let stripped = hex.replace(/^#+/, '');
+  if (/^[0-9a-f]{3}$/i.test(stripped)) {
+    stripped = stripped[0] + stripped[0] + stripped[1] + stripped[1] + stripped[2] + stripped[2];
+  }
+  if (!/^[0-9a-f]{6}$/i.test(stripped)) return '';
   return `#${stripped.toLowerCase()}`;
 }
 
@@ -85,14 +90,9 @@ export function normHex(hex: string): string {
  * enforcer.  Accepts `#RRGGBB` or `RRGGBB` format.
  */
 export function isGrayHex(hex: string): boolean {
-  let norm = hex.startsWith('#') ? hex : `#${hex}`;
-  if (norm.length === 4) {
-    norm = `#${norm[1]}${norm[1]}${norm[2]}${norm[2]}${norm[3]}${norm[3]}`;
-  }
-  if (norm.length < 7) return false;
-  const r = parseInt(norm.slice(1, 3), 16) / 255;
-  const g = parseInt(norm.slice(3, 5), 16) / 255;
-  const b = parseInt(norm.slice(5, 7), 16) / 255;
+  const norm = normHex(hex);
+  if (!norm) return false;
+  const { red: r, green: g, blue: b } = hexToRgb(norm);
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const sat = max === 0 ? 0 : (max - min) / max;

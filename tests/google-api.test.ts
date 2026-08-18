@@ -213,7 +213,7 @@ describe('batchUpdate', () => {
   test('throws on non-OK response', async () => {
     const origFetch = globalThis.fetch;
     globalThis.fetch = (async () =>
-      new Response('Not Found', { status: 404 })) as typeof fetch;
+      new Response('Not Found', { status: 404 })) as unknown as typeof fetch;
 
     try {
       await expect(

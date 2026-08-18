@@ -32,7 +32,8 @@ bun add ../librhgdoc
 | 13 | `collections` | `sparseMap` | Sparse-array mapping utility |
 | 14 | `tables` | `calcColumnWidths` | Calculate proportional column widths for Google Docs tables |
 | 15 | `admonitions` | `ADMONITION_TYPES`, `ADMONITION_LABELS`, `ADMONITION_ACCENT`, `ADMONITION_BG` | Admonition type definitions, labels, accent and background colours |
-| 16 | `lint` | `lintBrandNames`, `lintBareUrls`, `LintMessage`, `LintLevel` | Brand-name and bare-URL linting for Markdown content |
+| 16 | `drive` | `findOrCreateFolder`, `moveFileToFolder` | Drive folder create/lookup and file move helpers |
+| 17 | `lint` | `forEachNonCodeLine`, `lintBrandNames`, `lintBareUrls`, `lintUnclosedCodeFence`, `lintCodeBlockLanguage`, `lintEmDash`, `lintPlaceholderText`, `lintEmptyImageAlt`, `lintLongCodeBlock`, `LintMessage`, `LintLevel` | Markdown linting: brand names, bare URLs, code fences, em dashes, placeholders, image alt text, and code block length |
 
 ## Usage
 
@@ -62,7 +63,7 @@ const slug = toSlug("My Heading!"); // → "my-heading"
 
 // Lint brand names
 const issues = lintBrandNames("Install Openshift on RHEL.");
-// → [{ line: 1, col: 9, level: "warning", message: "…OpenShift…" }]
+// → [{ line: 1, level: "warn", msg: "…OpenShift…" }]
 ```
 
 ## Shared Auth
@@ -85,18 +86,12 @@ then saves the token for both tools to reuse.
 # Install dependencies
 bun install
 
-# Run tests (426 tests across 16 modules)
+# Run tests
 bun test
 
 # Type-check without emitting
 bun run typecheck
 ```
-
-## Stats
-
-- **16** modules (see table above)
-- **426** tests across 16 test files
-- Runtime: [Bun](https://bun.sh/)
 
 ## License
 

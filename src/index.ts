@@ -24,6 +24,8 @@ export {
   saveToken,
   refreshAccessToken,
   getValidToken,
+  getEnvToken,
+  TOKEN_ENV_VARS,
   isTokenExpired,
   buildAuthUrl,
   extractClientInfo,
@@ -94,10 +96,16 @@ export {
   ADMONITION_LABELS,
   ADMONITION_ACCENT,
   ADMONITION_BG,
+  isAdmonitionType,
 } from './admonitions.ts';
+export {
+  findOrCreateFolder,
+  moveFileToFolder,
+} from './drive.ts';
 export {
   type LintLevel,
   type LintMessage,
+  forEachNonCodeLine,
   lintBrandNames,
   lintBareUrls,
   lintUnclosedCodeFence,

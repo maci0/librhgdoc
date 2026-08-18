@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import {
+  forEachNonCodeLine,
   lintBrandNames, lintBareUrls,
   lintUnclosedCodeFence, lintCodeBlockLanguage,
   lintEmDash, lintPlaceholderText,
@@ -10,40 +11,32 @@ import {
 // ─── lintBrandNames ──────────────────────────────────────────────────────────
 
 describe('lintBrandNames', () => {
-  test('detects "Redhat" misspelling', () => {
-    const issues = lintBrandNames('We use Redhat Enterprise Linux.');
+  test.each([
+    ['Redhat', 'We use Redhat Enterprise Linux.', 'Red Hat'],
+    ['openshift', 'Deploy on openshift today', 'OpenShift'],
+    ['kubernetes', 'Running on kubernetes cluster.', 'Kubernetes'],
+    ['ansible', 'Use ansible for automation.', 'Ansible'],
+    ['Rhel', 'Install Rhel on bare metal.', 'RHEL'],
+    ['fedora', 'Run fedora workstation.', 'Fedora'],
+    ['podman', 'Use podman for containers.', 'Podman'],
+    ['Centos', 'Upgrade from Centos to RHEL.', 'CentOS'],
+    ['centos', 'Upgrade from centos to RHEL.', 'CentOS'],
+  ])('detects "%s" misspelling → %s', (_wrong, input, correct) => {
+    const issues = lintBrandNames(input);
     expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('Red Hat');
     expect(issues[0].level).toBe('warn');
-    expect(issues[0].line).toBe(1);
+    expect(issues[0].msg).toContain(correct);
   });
 
-  test('accepts correct "Red Hat" spelling', () => {
-    const issues = lintBrandNames('We use Red Hat Enterprise Linux.');
-    expect(issues).toHaveLength(0);
-  });
-
-  test('detects "openshift" case mismatch', () => {
-    const issues = lintBrandNames('Deploy on openshift today');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('OpenShift');
-  });
-
-  test('accepts correct "OpenShift" spelling', () => {
-    const issues = lintBrandNames('Deploy on OpenShift.');
-    expect(issues).toHaveLength(0);
-  });
-
-  test('detects "kubernetes" case mismatch', () => {
-    const issues = lintBrandNames('Running on kubernetes cluster.');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('Kubernetes');
-  });
-
-  test('detects "ansible" case mismatch', () => {
-    const issues = lintBrandNames('Use ansible for automation.');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('Ansible');
+  test.each([
+    ['Red Hat', 'We use Red Hat Enterprise Linux.'],
+    ['OpenShift', 'Deploy on OpenShift.'],
+    ['RHEL', 'Install RHEL on bare metal.'],
+    ['Fedora', 'Run Fedora workstation.'],
+    ['Podman', 'Use Podman for containers.'],
+    ['CentOS', 'Upgrade from CentOS to RHEL.'],
+  ])('accepts correct "%s" spelling', (_brand, input) => {
+    expect(lintBrandNames(input)).toHaveLength(0);
   });
 
   test('skips brand names inside code blocks', () => {
@@ -83,56 +76,6 @@ describe('lintBrandNames', () => {
 
   test('does not flag brand name inside inline code', () => {
     const issues = lintBrandNames('Use `openshift` as a value.');
-    expect(issues).toHaveLength(0);
-  });
-
-  test('detects "Rhel" misspelling → RHEL', () => {
-    const issues = lintBrandNames('Install Rhel on bare metal.');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('RHEL');
-  });
-
-  test('accepts correct "RHEL" spelling', () => {
-    const issues = lintBrandNames('Install RHEL on bare metal.');
-    expect(issues).toHaveLength(0);
-  });
-
-  test('detects "fedora" case mismatch → Fedora', () => {
-    const issues = lintBrandNames('Run fedora workstation.');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('Fedora');
-  });
-
-  test('accepts correct "Fedora" spelling', () => {
-    const issues = lintBrandNames('Run Fedora workstation.');
-    expect(issues).toHaveLength(0);
-  });
-
-  test('detects "podman" case mismatch → Podman', () => {
-    const issues = lintBrandNames('Use podman for containers.');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('Podman');
-  });
-
-  test('accepts correct "Podman" spelling', () => {
-    const issues = lintBrandNames('Use Podman for containers.');
-    expect(issues).toHaveLength(0);
-  });
-
-  test('detects "Centos" misspelling → CentOS', () => {
-    const issues = lintBrandNames('Upgrade from Centos to RHEL.');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('CentOS');
-  });
-
-  test('detects "centos" misspelling → CentOS', () => {
-    const issues = lintBrandNames('Upgrade from centos to RHEL.');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('CentOS');
-  });
-
-  test('accepts correct "CentOS" spelling', () => {
-    const issues = lintBrandNames('Upgrade from CentOS to RHEL.');
     expect(issues).toHaveLength(0);
   });
 
@@ -203,6 +146,32 @@ describe('lintBareUrls', () => {
   test('does not flag line with only markdown link', () => {
     const issues = lintBareUrls('See [docs](https://a.com)');
     expect(issues).toHaveLength(0);
+  });
+
+  test('does not flag URL inside inline code', () => {
+    const issues = lintBareUrls('Use `https://docs.example.com/api/endpoint` as the base URL.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('detects multiple bare URLs on a single line', () => {
+    const issues = lintBareUrls(
+      'Visit https://docs.example.com/path and https://other.example.com/path today.',
+    );
+    expect(issues).toHaveLength(2);
+    expect(issues[0].level).toBe('warn');
+    expect(issues[1].level).toBe('warn');
+  });
+
+  test('does not flag short URL after stripping trailing punctuation', () => {
+    // "http://example.com." — after stripping ".", URL becomes 18 chars → ≤20 → skip
+    const issues = lintBareUrls('See http://example.com.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('strips trailing period from bare URL before checking', () => {
+    // The URL without trailing period is still long enough to flag
+    const issues = lintBareUrls('Visit https://docs.example.com/some/path.');
+    expect(issues).toHaveLength(1);
   });
 });
 
@@ -345,25 +314,34 @@ describe('lintPlaceholderText', () => {
     expect(issues2).toHaveLength(1);
   });
 
-  test('detects FIXME', () => {
-    const issues = lintPlaceholderText('FIXME: broken link');
+  test.each([
+    ['FIXME', 'FIXME: broken link'],
+    ['XXX', 'XXX needs review'],
+    ['PLACEHOLDER', 'This is placeholder text'],
+  ])('detects %s', (ph, text) => {
+    const issues = lintPlaceholderText(text);
     expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('FIXME');
-  });
-
-  test('detects XXX', () => {
-    const issues = lintPlaceholderText('XXX needs review');
-    expect(issues).toHaveLength(1);
-    expect(issues[0].msg).toContain('XXX');
-  });
-
-  test('detects PLACEHOLDER', () => {
-    const issues = lintPlaceholderText('This is placeholder text');
-    expect(issues).toHaveLength(1);
+    expect(issues[0].msg).toContain(ph);
   });
 
   test('handles empty input', () => {
     expect(lintPlaceholderText('')).toEqual([]);
+  });
+
+  test('does not false-positive on "Todorov" (substring of TODO)', () => {
+    const issues = lintPlaceholderText('Author: Todorov');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('does not false-positive on "XXXL" (substring of XXX)', () => {
+    const issues = lintPlaceholderText('Available in sizes S, M, L, XXXL.');
+    expect(issues).toHaveLength(0);
+  });
+
+  test('still detects standalone TODO in a sentence', () => {
+    const issues = lintPlaceholderText('This is a TODO item.');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].msg).toContain('TODO');
   });
 });
 
@@ -438,5 +416,104 @@ describe('lintLongCodeBlock', () => {
 
   test('handles empty input', () => {
     expect(lintLongCodeBlock('')).toEqual([]);
+  });
+});
+
+// ─── forEachNonCodeLine ─────────────────────────────────────────────────────
+
+describe('forEachNonCodeLine', () => {
+  test('iterates over plain lines', () => {
+    const collected: Array<[string, number]> = [];
+    forEachNonCodeLine('alpha\nbeta\ngamma', (line, num) => collected.push([line, num]));
+    expect(collected).toEqual([
+      ['alpha', 1],
+      ['beta', 2],
+      ['gamma', 3],
+    ]);
+  });
+
+  test('skips content inside ``` fences', () => {
+    const collected: string[] = [];
+    forEachNonCodeLine('before\n```\ncode line\n```\nafter', (line) => collected.push(line));
+    expect(collected).toEqual(['before', 'after']);
+  });
+
+  test('skips content inside ~~~ fences', () => {
+    const collected: string[] = [];
+    forEachNonCodeLine('before\n~~~\ntilde code\n~~~\nafter', (line) => collected.push(line));
+    expect(collected).toEqual(['before', 'after']);
+  });
+
+  test('handles mixed ``` and ~~~ fences', () => {
+    const text = 'A\n```\ncode1\n```\nB\n~~~\ncode2\n~~~\nC';
+    const collected: string[] = [];
+    forEachNonCodeLine(text, (line) => collected.push(line));
+    expect(collected).toEqual(['A', 'B', 'C']);
+  });
+
+  test('normalizes CRLF to LF', () => {
+    const collected: Array<[string, number]> = [];
+    forEachNonCodeLine('one\r\ntwo\r\nthree', (line, num) => collected.push([line, num]));
+    expect(collected).toEqual([
+      ['one', 1],
+      ['two', 2],
+      ['three', 3],
+    ]);
+  });
+
+  test('handles empty input', () => {
+    const collected: string[] = [];
+    forEachNonCodeLine('', (line) => collected.push(line));
+    // empty string splits into one empty-string element
+    expect(collected).toEqual(['']);
+  });
+
+  test('fence-only document yields no callbacks', () => {
+    const collected: string[] = [];
+    forEachNonCodeLine('```\nsome code\n```', (line) => collected.push(line));
+    expect(collected).toEqual([]);
+  });
+
+  test('line numbers are 1-based', () => {
+    const nums: number[] = [];
+    forEachNonCodeLine('first\nsecond\nthird', (_line, num) => nums.push(num));
+    expect(nums).toEqual([1, 2, 3]);
+  });
+
+  test('fence lines themselves are not emitted', () => {
+    const collected: string[] = [];
+    forEachNonCodeLine('```js\nconsole.log("hi")\n```', (line) => collected.push(line));
+    expect(collected).toEqual([]);
+  });
+
+  test('mismatched fence types do not close each other', () => {
+    // ~~~ block contains a ``` line that must NOT close the fence
+    const text = '~~~\ncode\n```\nmore code\n~~~\nvisible';
+    const collected: string[] = [];
+    forEachNonCodeLine(text, (line) => collected.push(line));
+    expect(collected).toEqual(['visible']);
+  });
+
+  test('shorter backtick fence does not close longer opening fence', () => {
+    // ````` block contains a ``` line that must NOT close it (CommonMark spec)
+    const text = 'before\n`````\ncode\n```\nstill code\n`````\nafter';
+    const collected: string[] = [];
+    forEachNonCodeLine(text, (line) => collected.push(line));
+    expect(collected).toEqual(['before', 'after']);
+  });
+
+  test('longer backtick fence can close shorter opening fence', () => {
+    // ``` block can be closed by ````` (closing ≥ opening length)
+    const text = 'before\n```\ncode\n`````\nafter';
+    const collected: string[] = [];
+    forEachNonCodeLine(text, (line) => collected.push(line));
+    expect(collected).toEqual(['before', 'after']);
+  });
+
+  test('shorter tilde fence does not close longer opening fence', () => {
+    const text = 'before\n~~~~~\ncode\n~~~\nstill code\n~~~~~\nafter';
+    const collected: string[] = [];
+    forEachNonCodeLine(text, (line) => collected.push(line));
+    expect(collected).toEqual(['before', 'after']);
   });
 });

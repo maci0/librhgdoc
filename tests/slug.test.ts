@@ -45,4 +45,16 @@ describe('toSlug', () => {
   test('strips trailing hyphen from trailing spaces', () => {
     expect(toSlug(' hello ')).toBe('hello');
   });
+
+  test('strips parentheses', () => {
+    expect(toSlug('Install (Advanced)')).toBe('install-advanced');
+  });
+
+  test('strips colons', () => {
+    expect(toSlug('Step 1: Configure')).toBe('step-1-configure');
+  });
+
+  test('strips slashes and ampersands', () => {
+    expect(toSlug('A/B Testing & CI/CD')).toBe('ab-testing-cicd');
+  });
 });

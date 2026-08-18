@@ -6,6 +6,8 @@
  * on `googleapis`.
  */
 
+import type { RgbColor } from './colors.ts';
+
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
 /** A single request object in a Google API batch update. */
@@ -70,7 +72,14 @@ export async function batchUpdate(options: {
         `batchUpdate failed (${res.status}): ${text}`,
       );
     }
-    results.push((await res.json()) as BatchUpdateResponse);
+    const text = await res.text();
+    let body: BatchUpdateResponse;
+    try {
+      body = JSON.parse(text) as BatchUpdateResponse;
+    } catch {
+      throw new Error(`batchUpdate response is not valid JSON (${res.status}): ${text.slice(0, 200)}`);
+    }
+    results.push(body);
   }
   return results;
 }
@@ -82,7 +91,7 @@ export async function batchUpdate(options: {
  *
  * Used by the Google Docs API for font sizes, margins, padding, etc.
  */
-export function pt(n: number): { magnitude: number; unit: string } {
+export function pt(n: number): { magnitude: number; unit: 'PT' } {
   return { magnitude: n, unit: 'PT' };
 }
 
@@ -91,7 +100,7 @@ export function pt(n: number): { magnitude: number; unit: string } {
  *
  * Used by the Google Slides API for element sizes and positions.
  */
-export function emu(n: number): { magnitude: number; unit: string } {
+export function emu(n: number): { magnitude: number; unit: 'EMU' } {
   return { magnitude: n, unit: 'EMU' };
 }
 
@@ -106,7 +115,7 @@ export function rgbColor(
   r: number,
   g: number,
   b: number,
-): { red: number; green: number; blue: number } {
+): RgbColor {
   return { red: r, green: g, blue: b };
 }
 
@@ -120,8 +129,8 @@ export function opaqueColor(
   r: number,
   g: number,
   b: number,
-): { rgbColor: { red: number; green: number; blue: number } } {
-  return { rgbColor: { red: r, green: g, blue: b } };
+): { rgbColor: RgbColor } {
+  return { rgbColor: rgbColor(r, g, b) };
 }
 
 /** Create a WeightedFontFamily object for Google Docs/Slides API. */
@@ -130,7 +139,7 @@ export function wff(fontFamily: string, weight = 400): { fontFamily: string; wei
 }
 
 /** Wrap an RgbColor in the OptionalColor envelope used by the Docs API. */
-export function optionalColor(color: { red: number; green: number; blue: number }): { color: { rgbColor: { red: number; green: number; blue: number } } } {
+export function optionalColor(color: RgbColor): { color: { rgbColor: RgbColor } } {
   return { color: { rgbColor: color } };
 }
 

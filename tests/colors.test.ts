@@ -109,8 +109,11 @@ describe('isGrayHex', () => {
     expect(isGrayHex('#FFFFFF')).toBe(false);
   });
 
-  test('rejects null/empty/short', () => {
+  test('rejects empty string', () => {
     expect(isGrayHex('')).toBe(false);
+  });
+
+  test('rejects #FFF (white — luminance too high)', () => {
     expect(isGrayHex('#FFF')).toBe(false);
   });
 
@@ -152,6 +155,7 @@ describe('RH_COLORS', () => {
     expect(RH_COLORS.lightGray).toBeDefined();
     expect(RH_COLORS.darkBg).toBeDefined();
     expect(RH_COLORS.greyBg).toBeDefined();
+    expect(RH_COLORS.link).toBeDefined();
   });
 
   test('red matches #EE0000', () => {
@@ -165,6 +169,13 @@ describe('RH_COLORS', () => {
     expect(RH_COLORS.greyBg.green).toBeCloseTo(242 / 255, 4);
     expect(RH_COLORS.greyBg.blue).toBeCloseTo(242 / 255, 4);
     expect(rgbToHex(RH_COLORS.greyBg)).toBe('#f2f2f2');
+  });
+
+  test('link matches #0066CC', () => {
+    expect(RH_COLORS.link.red).toBe(0);
+    expect(RH_COLORS.link.green).toBeCloseTo(0.4, 4);
+    expect(RH_COLORS.link.blue).toBeCloseTo(0.8, 4);
+    expect(rgbToHex(RH_COLORS.link)).toBe('#0066cc');
   });
 });
 
@@ -205,5 +216,11 @@ describe('normHex', () => {
 
   test('rejects 4-char hex as invalid length', () => {
     expect(normHex('#AABB')).toBe('');
+  });
+
+  test('expands 3-digit hex to 6-digit', () => {
+    expect(normHex('#F00')).toBe('#ff0000');
+    expect(normHex('#abc')).toBe('#aabbcc');
+    expect(normHex('FFF')).toBe('#ffffff');
   });
 });

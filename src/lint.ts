@@ -17,6 +17,41 @@ export interface LintMessage {
   msg: string;
 }
 
+/** Returns the full fence marker (e.g. ````` or ~~~) when the line is a fence, or null. */
+function fenceMarker(line: string): string | null {
+  const m = line.match(/^\s*(```+|~~~+)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Iterate over lines outside fenced code blocks.
+ *
+ * Splits `text` on newlines, tracks ``` / ~~~ fence state, and calls
+ * `callback(line, lineNumber)` for every line that is NOT inside a
+ * fenced code block.  `lineNumber` is 1-based.
+ */
+export function forEachNonCodeLine(
+  text: string,
+  callback: (line: string, lineNumber: number) => void,
+): void {
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  let openMarker: string | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const candidate = fenceMarker(raw);
+    if (candidate) {
+      if (openMarker === null) {
+        openMarker = candidate;
+      } else if (candidate.charAt(0) === openMarker.charAt(0) && candidate.length >= openMarker.length) {
+        openMarker = null;
+      }
+      continue;
+    }
+    if (openMarker !== null) continue;
+    callback(raw, i + 1);
+  }
+}
+
 /** Brand-name spelling patterns: [regex, correct form].
  * Only warns when the match text differs from the correct form. */
 const BRAND_PATTERNS: Array<[RegExp, string]> = [
@@ -35,24 +70,20 @@ const BRAND_PATTERNS: Array<[RegExp, string]> = [
  * Skips content inside fenced code blocks. */
 export function lintBrandNames(text: string): LintMessage[] {
   const issues: LintMessage[] = [];
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  let inCode = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (/^\s*```/.test(raw) || /^\s*~~~/.test(raw)) { inCode = !inCode; continue; }
-    if (inCode) continue;
-
-    // Strip URLs before scanning so "platform=openshift" inside a URL doesn't false-positive
-    const scanLine = raw.replace(/https?:\/\/\S+/g, '');
+  forEachNonCodeLine(text, (raw, lineNumber) => {
+    // Strip URLs and inline code before scanning so they don't false-positive
+    const scanLine = raw
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/`[^`]+`/g, '');
     for (const [pattern, correct] of BRAND_PATTERNS) {
       for (const m of scanLine.matchAll(pattern)) {
         if (m[0] !== correct) {
-          issues.push({ line: i + 1, level: 'warn', msg: `Brand name: "${m[0]}" should be "${correct}"` });
+          issues.push({ line: lineNumber, level: 'warn', msg: `Brand name: "${m[0]}" should be "${correct}"` });
         }
       }
     }
-  }
+  });
 
   return issues;
 }
@@ -62,42 +93,29 @@ export function lintBrandNames(text: string): LintMessage[] {
  * Skips content inside fenced code blocks. */
 export function lintBareUrls(text: string): LintMessage[] {
   const issues: LintMessage[] = [];
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  let inCode = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (/^\s*```/.test(raw) || /^\s*~~~/.test(raw)) { inCode = !inCode; continue; }
-    if (inCode) continue;
-
+  forEachNonCodeLine(text, (raw, lineNumber) => {
     // Skip lines that are just a URL (common in reference sections)
-    if (/^https?:\/\//.test(raw.trim())) continue;
+    if (/^https?:\/\/\S+$/.test(raw.trim())) return;
 
-    // Remove markdown link constructs, then check remaining text for bare URLs
-    const stripped = raw.replace(/\[[^\]]*\]\([^)]*\)/g, '');
-    const bareUrl = stripped.match(/(?<!\()(https?:\/\/[^\s)>\]]+)/)?.[0] ?? '';
-    if (bareUrl.length > 20) {
-      issues.push({
-        line: i + 1,
-        level: 'warn',
-        msg: `Bare URL in prose — wrap in markdown link syntax`,
-      });
+    // Remove markdown link constructs and inline code, then check remaining text for bare URLs
+    const stripped = raw
+      .replace(/\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/`[^`]+`/g, '');
+    for (const m of stripped.matchAll(/(?<!\()(https?:\/\/[^\s)>\]]+)/g)) {
+      const url = m[0].replace(/[.,;:!?]+$/, '');
+      if (url.length > 20) {
+        issues.push({
+          line: lineNumber,
+          level: 'warn',
+          msg: `Bare URL in prose — wrap in markdown link syntax`,
+        });
+      }
     }
-  }
+  });
 
   return issues;
 }
-
-// ─── Fence-tracking helper ──────────────────────────────────────────────────
-
-/** Test whether a line opens or closes a fenced code block.
- *  Returns the fence marker (``` or ~~~) when the line is a fence, or null. */
-function fenceMarker(line: string): string | null {
-  const m = line.match(/^\s*(```+|~~~+)/);
-  return m ? m[1].charAt(0).repeat(3) : null;
-}
-
-// ─── lintUnclosedCodeFence ──────────────────────────────────────────────────
 
 /** Detect unmatched ``` or ~~~ fences.
  *  If a fence is still open at EOF, reports an error on the opening line. */
@@ -111,15 +129,12 @@ export function lintUnclosedCodeFence(text: string): LintMessage[] {
     if (!marker) continue;
 
     if (openMarker === null) {
-      // Opening fence
       openMarker = marker;
       openLine = i;
-    } else if (marker === openMarker) {
-      // Closing fence (same type)
+    } else if (marker.charAt(0) === openMarker.charAt(0) && marker.length >= openMarker.length) {
       openMarker = null;
       openLine = -1;
     }
-    // Otherwise it's a different fence type inside an open fence — ignore
   }
 
   if (openMarker !== null) {
@@ -128,28 +143,31 @@ export function lintUnclosedCodeFence(text: string): LintMessage[] {
   return [];
 }
 
-// ─── lintCodeBlockLanguage ──────────────────────────────────────────────────
-
 /** Flag opening ``` fences that have no language identifier.
  *  Skips fences that are nested inside an already-open fence. */
 export function lintCodeBlockLanguage(text: string): LintMessage[] {
   const issues: LintMessage[] = [];
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   let inCode = false;
+  let openMarker: string | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const m = raw.match(/^\s*(```+|~~~+)(.*)/);
     if (!m) continue;
 
+    const marker = m[1];
+
     if (inCode) {
-      // Could be closing fence
-      inCode = false;
+      if (openMarker && marker.charAt(0) === openMarker.charAt(0) && marker.length >= openMarker.length) {
+        inCode = false;
+        openMarker = null;
+      }
       continue;
     }
 
-    // Opening fence
     inCode = true;
+    openMarker = marker;
     const lang = m[2].trim();
     if (!lang) {
       issues.push({ line: i + 1, level: 'warn', msg: 'Code block has no language tag — add one (bash, yaml, json, etc.)' });
@@ -159,78 +177,54 @@ export function lintCodeBlockLanguage(text: string): LintMessage[] {
   return issues;
 }
 
-// ─── lintEmDash ─────────────────────────────────────────────────────────────
-
 /** Flag em dash (U+2014) in prose lines. Skips code fences and headings. */
 export function lintEmDash(text: string): LintMessage[] {
   const issues: LintMessage[] = [];
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  let inCode = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (/^\s*```/.test(raw) || /^\s*~~~/.test(raw)) { inCode = !inCode; continue; }
-    if (inCode) continue;
-    if (/^#{1,6}\s/.test(raw)) continue; // skip headings
+  forEachNonCodeLine(text, (raw, lineNumber) => {
+    if (/^#{1,6}\s/.test(raw)) return; // skip headings
 
     if (/\u2014/.test(raw)) {
-      issues.push({ line: i + 1, level: 'warn', msg: 'Em dash (\u2014) detected: consider replacing with a colon, comma, period, or rewording' });
+      issues.push({ line: lineNumber, level: 'warn', msg: 'Em dash (\u2014) detected: consider replacing with a colon, comma, period, or rewording' });
     }
-  }
+  });
 
   return issues;
 }
-
-// ─── lintPlaceholderText ────────────────────────────────────────────────────
 
 /** Flag TODO, TBD, PLACEHOLDER, FIXME, XXX in prose lines.
  *  Skips content inside code fences. */
 export function lintPlaceholderText(text: string): LintMessage[] {
   const issues: LintMessage[] = [];
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
   const PLACEHOLDERS = ['TODO', 'TBD', 'PLACEHOLDER', 'FIXME', 'XXX'];
-  let inCode = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (/^\s*```/.test(raw) || /^\s*~~~/.test(raw)) { inCode = !inCode; continue; }
-    if (inCode) continue;
-
+  forEachNonCodeLine(text, (raw, lineNumber) => {
     const upper = raw.toUpperCase();
     for (const ph of PLACEHOLDERS) {
-      if (upper.includes(ph)) {
-        issues.push({ line: i + 1, level: 'warn', msg: `Placeholder text "${ph}" found — remove or replace before publishing` });
+      const re = new RegExp(`\\b${ph}\\b`);
+      if (re.test(upper)) {
+        issues.push({ line: lineNumber, level: 'warn', msg: `Placeholder text "${ph}" found — remove or replace before publishing` });
         break; // one warning per line is enough
       }
     }
-  }
+  });
 
   return issues;
 }
-
-// ─── lintEmptyImageAlt ──────────────────────────────────────────────────────
 
 /** Flag images with empty alt text: `![](url)`.
  *  Skips content inside code fences. */
 export function lintEmptyImageAlt(text: string): LintMessage[] {
   const issues: LintMessage[] = [];
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  let inCode = false;
 
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    if (/^\s*```/.test(raw) || /^\s*~~~/.test(raw)) { inCode = !inCode; continue; }
-    if (inCode) continue;
-
+  forEachNonCodeLine(text, (raw, lineNumber) => {
     if (/!\[\]\([^)]+\)/.test(raw)) {
-      issues.push({ line: i + 1, level: 'warn', msg: 'Image has empty alt text — add descriptive alt text for accessibility' });
+      issues.push({ line: lineNumber, level: 'warn', msg: 'Image has empty alt text — add descriptive alt text for accessibility' });
     }
-  }
+  });
 
   return issues;
 }
-
-// ─── lintLongCodeBlock ──────────────────────────────────────────────────────
 
 /** Flag code blocks exceeding maxLines (default 50).
  *  Reports on the opening fence line. */
@@ -244,17 +238,15 @@ export function lintLongCodeBlock(text: string, maxLines: number = 50): LintMess
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
-    const m = raw.match(/^\s*(```+|~~~+)/);
+    const marker = fenceMarker(raw);
 
-    if (m) {
-      const marker = m[1].charAt(0).repeat(3);
+    if (marker) {
       if (!inCode) {
         inCode = true;
         openMarker = marker;
         fenceStart = i;
         codeLineCount = 0;
-      } else if (marker === openMarker) {
-        // Closing fence
+      } else if (openMarker && marker.charAt(0) === openMarker.charAt(0) && marker.length >= openMarker.length) {
         if (codeLineCount > maxLines) {
           issues.push({ line: fenceStart + 1, level: 'warn', msg: `Code block is ${codeLineCount} lines — consider splitting or moving to an appendix` });
         }

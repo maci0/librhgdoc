@@ -124,6 +124,16 @@ describe('extractSvgDimensions', () => {
     const svg = "<svg width='800' height='600'></svg>";
     expect(extractSvgDimensions(svg)).toEqual({ width: 800, height: 600 });
   });
+
+  test('ignores width/height on inner elements when root svg uses viewBox only', () => {
+    const svg = '<svg viewBox="0 0 800 600"><rect width="200" height="100"/></svg>';
+    expect(extractSvgDimensions(svg)).toBeNull();
+  });
+
+  test('reads root svg dimensions even when inner elements also have them', () => {
+    const svg = '<svg width="800" height="600"><rect width="200" height="100"/></svg>';
+    expect(extractSvgDimensions(svg)).toEqual({ width: 800, height: 600 });
+  });
 });
 
 // ─── renderMermaidPng ───────────────────────────────────────────────────────

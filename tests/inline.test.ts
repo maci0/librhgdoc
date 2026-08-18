@@ -178,6 +178,166 @@ describe('InlineSeg type alias', () => {
   });
 });
 
+describe('parseInline backslash escapes', () => {
+  test('\\* produces literal asterisk, not italic', () => {
+    const runs = parseInline('\\*not italic\\*');
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toBe('*not italic*');
+    expect(runs.every(r => !r.italic)).toBe(true);
+  });
+
+  test('\\\\  produces literal backslash', () => {
+    const runs = parseInline('\\\\');
+    expect(runs).toEqual([{ text: '\\' }]);
+  });
+
+  test('\\` produces literal backtick, not code', () => {
+    const runs = parseInline('\\`not code\\`');
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toBe('`not code`');
+    expect(runs.every(r => !r.code)).toBe(true);
+  });
+
+  test('\\~ produces literal tilde', () => {
+    const runs = parseInline('\\~not strike\\~');
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toBe('~not strike~');
+    expect(runs.every(r => !r.strikethrough)).toBe(true);
+  });
+
+  test('escape before bold marker: \\** is literal *', () => {
+    const runs = parseInline('\\**not bold');
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toContain('*');
+  });
+
+  test('escape inside formatted text', () => {
+    const runs = parseInline('**bold with \\* literal**');
+    const boldRuns = runs.filter(r => r.bold);
+    const allBoldText = boldRuns.map(r => r.text).join('');
+    expect(allBoldText).toContain('*');
+    expect(allBoldText).toContain('bold with');
+  });
+});
+
+describe('parseInline underscore variants', () => {
+  test('__bold__ produces bold run', () => {
+    const runs = parseInline('hello __bold__ world');
+    expect(runs).toHaveLength(3);
+    expect(runs[1]).toEqual({ text: 'bold', bold: true });
+  });
+
+  test('_italic_ produces italic run', () => {
+    const runs = parseInline('hello _italic_ world');
+    expect(runs).toHaveLength(3);
+    expect(runs[1]).toEqual({ text: 'italic', italic: true });
+  });
+
+  test('**bold** and __also bold__ both produce bold', () => {
+    const runs = parseInline('**star** and __under__');
+    const boldRuns = runs.filter(r => r.bold);
+    expect(boldRuns).toHaveLength(2);
+    expect(boldRuns[0].text).toBe('star');
+    expect(boldRuns[1].text).toBe('under');
+  });
+
+  test('word-internal underscores do NOT trigger italic', () => {
+    const runs = parseInline('snake_case_name');
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toEqual({ text: 'snake_case_name' });
+    expect(runs[0].italic).toBeUndefined();
+  });
+
+  test('double underscore inside word does NOT trigger bold', () => {
+    const runs = parseInline('my__var__name');
+    expect(runs.every(r => !r.bold)).toBe(true);
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toBe('my__var__name');
+  });
+
+  test('underscore italic at start of string', () => {
+    const runs = parseInline('_italic_ text');
+    expect(runs[0]).toEqual({ text: 'italic', italic: true });
+  });
+
+  test('underscore italic at end of string', () => {
+    const runs = parseInline('text _italic_');
+    const lastStyled = runs.find(r => r.italic);
+    expect(lastStyled?.text).toBe('italic');
+  });
+
+  test('__bold with _italic_ inside__', () => {
+    const runs = parseInline('__bold _italic_ text__');
+    expect(runs.some(r => r.bold && !r.italic)).toBe(true);
+    expect(runs.some(r => r.bold && r.italic)).toBe(true);
+  });
+
+  test('underscore after punctuation triggers italic', () => {
+    const runs = parseInline('hello, _italic_ world');
+    expect(runs.some(r => r.italic)).toBe(true);
+  });
+});
+
+describe('parseInline image passthrough', () => {
+  test('![alt](url) produces plain alt text', () => {
+    const runs = parseInline('text ![image](https://example.com/img.png) more');
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toBe('text image more');
+    expect(runs.every(r => !r.link)).toBe(true);
+  });
+
+  test('![](url) with empty alt produces no extra run', () => {
+    const runs = parseInline('before ![](url) after');
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toBe('before  after');
+  });
+
+  test('![alt](url) is not confused with [link](url)', () => {
+    const runs = parseInline('[link](https://a.com) and ![img](https://b.com/x.png)');
+    expect(runs.some(r => r.link === 'https://a.com')).toBe(true);
+    const allText = runs.map(r => r.text).join('');
+    expect(allText).toContain('link');
+    expect(allText).toContain('img');
+  });
+});
+
+describe('stripInline extended', () => {
+  test('strips backslash escapes', () => {
+    expect(stripInline('\\*literal\\*')).toBe('*literal*');
+  });
+
+  test('strips __bold__ markers', () => {
+    expect(stripInline('__bold__')).toBe('bold');
+  });
+
+  test('strips _italic_ markers', () => {
+    expect(stripInline('_italic_ text')).toBe('italic text');
+  });
+
+  test('strips ![alt](url) to alt text', () => {
+    expect(stripInline('see ![diagram](img.png) here')).toBe('see diagram here');
+  });
+
+  test('preserves snake_case_name', () => {
+    expect(stripInline('my_var_name')).toBe('my_var_name');
+  });
+
+  test('strips \\\\  to single backslash', () => {
+    expect(stripInline('path\\\\file')).toBe('path\\file');
+  });
+
+  test('strips all new + old formatting combined', () => {
+    const input = '**bold** __under__ *italic* _under2_ `code` [link](url) ![img](src) ~~strike~~';
+    const result = stripInline(input);
+    expect(result).not.toContain('**');
+    expect(result).not.toContain('__');
+    expect(result).not.toContain('`');
+    expect(result).not.toContain('~~');
+    expect(result).not.toContain('](');
+    expect(result).not.toContain('![');
+  });
+});
+
 describe('parseInline italic/bold nesting', () => {
   test('*italic **bold** italic* — italic wrapping bold', () => {
     const runs = parseInline('*italic **bold** italic*');

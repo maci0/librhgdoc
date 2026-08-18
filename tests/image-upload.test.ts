@@ -68,6 +68,18 @@ describe('deleteGoogleDriveFile', () => {
     mockFetch(() => new Response('Server Error', { status: 500 }));
     await expect(deleteGoogleDriveFile(TOKEN, 'bad')).rejects.toThrow('Drive delete failed');
   });
+
+  test('encodes fileId with special characters in URL', async () => {
+    mockFetch(() => new Response(null, { status: 204 }));
+
+    const specialId = 'file/id with spaces&more';
+    await deleteGoogleDriveFile(TOKEN, specialId);
+
+    expect(fetchCalls).toHaveLength(1);
+    expect(fetchCalls[0].url).toBe(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(specialId)}`,
+    );
+  });
 });
 
 // ─── uploadImageToDrive ───────────────────────────────────────────────────────
