@@ -5,6 +5,7 @@ import {
   lintUnclosedCodeFence, lintCodeBlockLanguage,
   lintEmDash, lintPlaceholderText,
   lintEmptyImageAlt, lintLongCodeBlock,
+  lintMermaidDiagram,
   type LintMessage,
 } from '../src/lint.ts';
 
@@ -515,5 +516,55 @@ describe('forEachNonCodeLine', () => {
     const collected: string[] = [];
     forEachNonCodeLine(text, (line) => collected.push(line));
     expect(collected).toEqual(['before', 'after']);
+  });
+});
+
+// ─── lintMermaidDiagram ───────────────────────────────────────────────────────
+
+describe('lintMermaidDiagram', () => {
+  test('reports classDef end as error', () => {
+    const code = 'flowchart TD\n  A --> B\n  classDef end fill:#f00\n  A:::end';
+    const issues = lintMermaidDiagram(code);
+    const err = issues.find(i => i.msg.includes('classDef end'));
+    expect(err).toBeDefined();
+    expect(err?.level).toBe('error');
+    expect(err?.line).toBe(3);
+  });
+
+  test('reports classDef class as error', () => {
+    const code = 'flowchart TD\n  classDef class fill:#00f';
+    const issues = lintMermaidDiagram(code);
+    const err = issues.find(i => i.msg.includes('classDef class'));
+    expect(err).toBeDefined();
+    expect(err?.level).toBe('error');
+    expect(err?.line).toBe(2);
+  });
+
+  test('reports dark text on dark fill as warning', () => {
+    const code = 'flowchart TD\n  style A fill:#292929,color:#001122';
+    const issues = lintMermaidDiagram(code);
+    const warn = issues.find(i => i.msg.includes('dark text'));
+    expect(warn).toBeDefined();
+    expect(warn?.level).toBe('warn');
+  });
+
+  test('accepts valid classDef names', () => {
+    const code = 'flowchart TD\n  classDef terminal fill:#f00\n  classDef active fill:#0f0';
+    expect(lintMermaidDiagram(code)).toHaveLength(0);
+  });
+
+  test('accepts light text on dark fill', () => {
+    const code = 'flowchart TD\n  style A fill:#292929,color:#ffffff';
+    expect(lintMermaidDiagram(code)).toHaveLength(0);
+  });
+
+  test('returns multiple issues from one diagram', () => {
+    const code = 'flowchart TD\n  classDef end fill:#f00\n  classDef class fill:#00f';
+    const issues = lintMermaidDiagram(code);
+    expect(issues.filter(i => i.level === 'error')).toHaveLength(2);
+  });
+
+  test('empty diagram returns no issues', () => {
+    expect(lintMermaidDiagram('')).toHaveLength(0);
   });
 });

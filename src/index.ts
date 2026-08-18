@@ -114,4 +114,6 @@ export {
   lintPlaceholderText,
   lintEmptyImageAlt,
   lintLongCodeBlock,
+  lintMermaidDiagram,
 } from './lint.ts';
+export { resolveUnderBase } from './safe-path.ts';

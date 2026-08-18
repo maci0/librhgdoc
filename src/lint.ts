@@ -262,3 +262,32 @@ export function lintLongCodeBlock(text: string, maxLines: number = 50): LintMess
 
   return issues;
 }
+
+/**
+ * Check a raw Mermaid diagram source string for common authoring mistakes.
+ *
+ * `code` is the text between the ``` fences — no fences, no language tag.
+ * Line numbers in the returned messages are 1-based relative to `code`.
+ */
+export function lintMermaidDiagram(code: string): LintMessage[] {
+  if (!code) return [];
+  const issues: LintMessage[] = [];
+  const lines = code.replace(/\r\n/g, '\n').split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const ln = i + 1;
+    const raw = lines[i];
+
+    if (/\bclassDef\s+end\b/.test(raw)) {
+      issues.push({ line: ln, level: 'error', msg: 'Mermaid: `classDef end` uses a reserved keyword — rename (e.g. `classDef terminal`)' });
+    }
+    if (/\bclassDef\s+class\b/.test(raw)) {
+      issues.push({ line: ln, level: 'error', msg: 'Mermaid: `classDef class` uses a reserved keyword — rename the class' });
+    }
+    if (/\bstyle\s+\w+\s+fill:#[A-Fa-f0-9]{3,6}[^,]*,\s*color:#[0-3][0-9a-f]{5}/i.test(raw)) {
+      issues.push({ line: ln, level: 'warn', msg: 'Mermaid: dark text on potentially dark fill — use white text on dark/red backgrounds' });
+    }
+  }
+
+  return issues;
+}
