@@ -74,6 +74,80 @@ Audit of functionality in `templar` and `herald` evaluated for extraction into `
 | OAuth scope constants | templar `scripts/templar-auth.ts`, herald `src/auth.ts` | Different scope sets for different APIs. Well-known Google URLs — repeating is clearer than importing. |
 | A4 page dimensions | templar `lib/docs-api.ts` | Only templar uses these (Docs page setup). Herald targets Slides (fixed 10"×5.625"). |
 
-## Round 3 scan result
+### Round 3 (shared lint checks)
 
-No new viable candidates found. Remaining overlap is blocked by the `string` token vs `OAuth2Client` auth interface split, is application-specific, or is too trivial to justify library functions.
+| Module | Exports | Source |
+|--------|---------|--------|
+| `lint` | `lintUnclosedCodeFence`, `lintCodeBlockLanguage`, `lintEmDash`, `lintPlaceholderText`, `lintEmptyImageAlt`, `lintLongCodeBlock`, `forEachNonCodeLine` | templar `lib/linter.ts`, herald `index.ts` |
+| `cli` | `formatGoogleApiError` | templar `templar.ts`, herald `index.ts` |
+| `auth` | `runAuthFlow`, `exchangeCodeForToken`, `getEnvToken`, `TOKEN_ENV_VARS`, `defaultAuthConfig`, `AuthFlowOptions` | templar `scripts/templar-auth.ts`, herald `src/auth.ts` |
+| `images` | `mimeToExtension` | templar `lib/file-upload.ts` |
+| `admonitions` | `isAdmonitionType` | templar `lib/docs-api.ts` |
+
+### Round 4 (lint + safe-path)
+
+| Module | Exports | Source |
+|--------|---------|--------|
+| `lint` | `lintMermaidDiagram` | templar `lib/linter.ts` (inline scan loop); herald `index.ts` (added new) |
+| `safe-path` | `resolveUnderBase` | templar `lib/safe-path.ts` (deleted); herald `index.ts` (adopted for `resolveImageUrl`) |
+
+### Round 5 (drive reuse + browser open)
+
+| Module | Exports | Source |
+|--------|---------|--------|
+| `cli` | `openGoogleUrl` | templar `templar.ts` (`openInBrowser` — deleted); herald `index.ts` (three `Bun.spawn(['open', url])` calls replaced) |
+| `drive` | `findOrCreateFolder`, `moveFileToFolder` (already in librhgdoc) | herald `index.ts` — re-implemented inline instead of calling librhgdoc; fixed to use shared functions |
+
+### Round 6 (retry)
+
+| Module | Exports | Source |
+|--------|---------|--------|
+| `google-api` | `withGoogleRetry` | templar `lib/docs-api.ts` (deleted local copy); herald `src/api.ts` (added retry to `copyTemplate`, `getPresentation`, `batchUpdate`, `uploadImagesBatch`) |
+
+## Kept local (not extracted)
+
+| Candidate | Location | Reason |
+|-----------|----------|--------|
+| `getDocsToken` / `getAuthClient` | templar `lib/auth.ts`, herald `src/auth.ts` | Different credential formats and return types. Templar uses a single combined credentials file and returns `string \| null`; herald uses `google-auth-library` `OAuth2Client` throughout. |
+| `docsBatchUpdate` | templar `lib/docs-api.ts` | Uses `googleapis` client library with typed `docs_v1` request/response types. librhgdoc's `batchUpdate` uses raw `fetch()` — not a drop-in replacement. |
+| `rgb()` / `pt()` / `wff()` (in templar) | templar `lib/docs-api.ts` | Return `docs_v1.Schema$*` typed objects. Replacing with librhgdoc's plain-object versions risks type inference issues in callers. One-liners not worth the risk. |
+| `renderMermaidPng` (templar's) | templar `lib/mermaid.ts` | Uses puppeteer + headless Chrome with auto LR→TD conversion and `%%{init}%%` stripping. librhgdoc uses `beautiful-mermaid` + `@resvg/resvg-js`. Different rendering engines. |
+| `preprocessMermaid` | templar `lib/mermaid.ts` | Full pipeline with puppeteer lifecycle, caching via `cachedHashes`, and placeholder substitution. Application-specific orchestration. |
+| `preprocessCode` / `CodeBlock` (shiki) | templar `lib/code.ts` | Uses Shiki (WASM-based) with position-offset highlights `{start, end, color}`. librhgdoc uses highlight.js with run-based `ColoredRun[]`. Different engines, different output formats. |
+| `preprocessImages` | templar `lib/images.ts` | Application-specific pipeline with caching, sync I/O, and templar's `ImageBlock` return type. |
+| `parseMdBlocks` / `MdBlock` | templar `lib/md-blocks.ts` | Templar-specific block types (cover, mermaidIdx, codeKey, imageKey). Would need significant abstraction to generalize. |
+| `parseBody` / `ParsedBody` | herald `src/parse.ts` | Tightly coupled to Marp Core token format. |
+| `parseDeck` / `SlideSpec` / `DeckMeta` | herald `src/parse.ts`, `src/types.ts` | Herald's Marp-specific deck parsing and slide specification types. |
+| `parseInline` (herald's) | herald `src/parse.ts` | Uses Marp Core's markdown-it parser. Handles Marp-specific tokens (emoji, math, hardbreak). Cannot replace with librhgdoc's hand-rolled parser without losing Marp syntax. |
+| `cropToFillAspect` | herald `src/api.ts` | ImageMagick dependency, only herald uses it. |
+| `renderLatex` | herald `src/render.ts` | KaTeX + Puppeteer dependency, only herald uses it. |
+| `lintMarkdown` (full) | templar `lib/linter.ts` | 20+ check categories deeply integrated with line-number tracking and scanning state. Shared checks delegated to librhgdoc; templar-specific checks remain local. |
+| `lintDeck` | herald `index.ts` | Herald-specific Marp layout/frontmatter validation. |
+| `normHex` (in GAS) | templar `gas/enforce-template.ts` | Google Apps Script cannot import npm modules. Local copy must remain. |
+| `ADMONITION_LABELS` (in templar) | templar `lib/docs-api.ts` | IMPORTANT emoji differs: templar uses 📌, librhgdoc uses ❗. Kept local to preserve rendered output. |
+| `Geo` / `parseGeo` | herald `src/parse.ts` | Only herald uses positioned elements. Templar has no use case. |
+| `buildZOrderRequests` | herald `index.ts` | Slides-only API helper. Templar targets Docs. |
+| LCS diff (`diffBlocks`, `lcsBodyDiff`) | templar `lib/diff.ts` | Match predicates are templar-specific. Would need parameterization. Herald doesn't do incremental updates. |
+| `FontSpec` / heading specs | templar `gas/types.d.ts`, `gas/templates.ts` | Representation differs between Docs (pt-based) and Slides (EMU-based). GAS types can't import from npm. |
+| `CompactBlock` / `fetchDocBlocks` | templar `lib/docs-api.ts` | Tightly coupled to Google Docs API response shape. |
+| Layout configs / `LayoutConfig` | herald `src/layouts.ts` | Herald-specific Google Slides template architecture. |
+| `deleteDriveFiles` (herald's) | herald `index.ts` | Takes `OAuth2Client`, not raw token. Incompatible with librhgdoc's `deleteGoogleDriveFiles`. |
+| `exportPdf` / `exportGoogleFile` | templar `lib/pdf.ts`, herald `index.ts` | Both do Drive `files.export` but with different auth types (`googleapis` client vs `OAuth2Client`). 5-line pattern not worth the auth abstraction. |
+| `RH_FONTS` constants | templar (multiple occurrences) | Herald uses different code font (`Roboto Mono` vs `Red Hat Mono`). Self-documenting strings used inline in API request builders. Marginal value. |
+| `docUrl` / `googleSlidesUrl` | templar `templar.ts`, herald `index.ts` | One-liner URL interpolations. Extracting adds dependency overhead for zero logic. |
+| Structured logger | Both projects (ad-hoc `process.stderr.write`) | No shared pattern exists — each call is bespoke. Would be a new abstraction, not an extraction. |
+| File I/O wrappers | Both projects (raw `readFileSync`/`writeFileSync`) | Standard Node.js calls, no wrapper needed. |
+| OAuth scope constants | templar `scripts/templar-auth.ts`, herald `src/auth.ts` | Different scope sets for different APIs. Well-known Google URLs — repeating is clearer than importing. |
+| A4 page dimensions | templar `lib/docs-api.ts` | Only templar uses these (Docs page setup). Herald targets Slides (fixed 10"×5.625"). |
+| `redactSecrets` | templar `lib/auth.ts` | Herald never surfaces raw token strings in error messages. No shared need. |
+| `emojiFontResets` | templar `lib/inline-styles.ts` | Returns `docs_v1.Schema$Request[]`. Herald targets Slides and handles emoji differently. |
+| `runExclusive` / `ExclusiveState` | templar `lib/async-exclusive.ts` | Templar-specific debounce coalescing for incremental sync. Herald uses a simpler boolean flag. |
+| `cell-fill` helpers | templar `lib/cell-fill.ts` | Builds `docs_v1.Schema$Request[]` — Docs API types throughout. No Slides equivalent. |
+| `buildInlineStyleRequests` | templar `lib/inline-styles.ts` | Docs API typed. Herald's Slides text runs use different request shape. |
+| Watch debounce constants | Both projects (800ms, 1500ms inline) | Identical values but callbacks are entirely app-specific. Not worth a shared constant. |
+| `buildLineStarts` / `lineNumberAt` | templar `lib/linter.ts` | Byte-offset to line-number mapping for templar's document linter. Herald uses slide index instead. |
+| Heading lint checks | templar `lib/linter.ts` | Document structure checks (H1/H2 hierarchy, empty sections). Herald lints slide titles, not Markdown headings. |
+
+## Final scan result (rounds 4–6 + three independent agent scans)
+
+The shared surface is exhausted. All remaining differences are blocked by the `string` token vs `OAuth2Client` auth split, `docs_v1` vs `slides_v1` API types, different rendering engines (puppeteer/Shiki vs beautiful-mermaid/hljs), or are application-specific orchestration with no generalizable core.
